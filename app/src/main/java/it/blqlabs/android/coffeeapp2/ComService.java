@@ -61,6 +61,7 @@ public class ComService extends Service {
     private static final byte[] RESULT_AUTH_ERROR = {(byte) 0xB1, (byte) 0xB2};
     private static final String CARD_READER = "CARD READER";
     private static final int MESSENGER_PROGRESS_BAR = 1;
+    private static final int MESSENGER_UPDATE_DATA = 2;
     private static final int START_PROGRESS = 1;
     private static final int STOP_PROGRESS = 0;
 
@@ -102,8 +103,6 @@ public class ComService extends Service {
 
             cardSetting = context.getSharedPreferences(Constants.USER_SHARED_PREF, Context.MODE_PRIVATE);
             settingEditor = cardSetting.edit();
-            userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
-            newCredit = Float.valueOf(userCredit);
             userId = cardSetting.getString(Constants.USER_ID, "");
 
             db = new TransactionsDBOpenHelper(context).getWritableDatabase();
@@ -163,6 +162,8 @@ public class ComService extends Service {
                                 messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
                                 break;
                             case AUTHENTICATED:
+                                userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
+                                newCredit = Float.valueOf(userCredit);
                                 data = (/*controlKey + "," + */userId + "," + userCredit).getBytes();
                                 command = BuildApduCommand(APDU_LOG_IN, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(data), APDU_LE);
 
@@ -192,7 +193,7 @@ public class ComService extends Service {
                                 } else if (Arrays.equals(RESULT_STATUS_RECHARGED, statusWord)) {
                                     timestamp = Arrays.copyOfRange(result, 8, 18);
                                     float rechargeValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                    transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
+                                    transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
 
                                     Log.d("READING STATUS", "RECHARGED: " + rechargeValue + ", id=" + transactionNumber);
                                     StoreRequestBean storeRequest = new StoreRequestBean();
@@ -201,18 +202,18 @@ public class ComService extends Service {
                                     storeRequest.setAmount("+" + String.valueOf(rechargeValue));
                                     storeRequest.setTimestamp(new String(timestamp));
 
-                                    newCredit += rechargeValue;
+                                    //newCredit += rechargeValue;
                                     responseOk = false;
-                                    //cardState = Constants.State.WAITING_RESPONSE;
-                                    cardState = Constants.State.DATA_UPDATED;
+                                    cardState = Constants.State.WAITING_RESPONSE;
+                                    //cardState = Constants.State.DATA_UPDATED;
 
-                                    //new StoreAsyncTask().execute(storeRequest);
+                                    new StoreAsyncTask().execute(storeRequest);
                                     //STORE TRANSACTION TASK
 
                                 } else if (Arrays.equals(RESULT_STATUS_PURCHASE, statusWord)) {
                                     timestamp = Arrays.copyOfRange(result, 8, 18);
                                     float purchaseValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                    transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
+                                    transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
 
                                     Log.d("READING STATUS", "PURCHASE: " + purchaseValue + ", id=" + transactionNumber);
 
@@ -223,26 +224,26 @@ public class ComService extends Service {
                                     storeRequest.setTimestamp(new String(timestamp));
 
 
-                                    newCredit -= purchaseValue;
+                                    //newCredit -= purchaseValue;
                                     //STORE TRANSACTION TASK
                                     responseOk = false;
-                                    //cardState = Constants.State.WAITING_RESPONSE;
-                                    //new StoreAsyncTask().execute(storeRequest);
-                                    cardState = Constants.State.DATA_UPDATED;
+                                    cardState = Constants.State.WAITING_RESPONSE;
+                                    new StoreAsyncTask().execute(storeRequest);
+                                    //cardState = Constants.State.DATA_UPDATED;
 
 
                                 }
 
                                 break;
                             case DATA_UPDATED:
-                                Thread.sleep(500);
-
                                 newCredit = (float)Math.round(newCredit * 100) / 100;
 
                                 settingEditor.putString(Constants.USER_CREDIT, String.valueOf(newCredit));
                                 settingEditor.commit();
 
                                 userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
+                                Log.d("COM SERVICE", "User credit updated: " + userCredit);
+                                messenger.send(Message.obtain(null, MESSENGER_UPDATE_DATA, 1));
 
                                 cardState = Constants.State.AUTHENTICATED;
 
@@ -333,9 +334,10 @@ public class ComService extends Service {
                 settingEditor.commit();
                 cardState = Constants.State.AUTHENTICATED;
                 responseOk = true;
+                Toast.makeText(getApplicationContext(), "LOGGED", Toast.LENGTH_SHORT).show();
                 Log.d("LOGIN TASK", "Confirmed:" + bean.getLogged() + "\nControl Key:" + controlKey);
             } else {
-
+                Log.d("LOGIN TASK", "Error loggin user in");
             }
             //mAccountCallback.get().updateProgressBar(false);
         }
@@ -371,9 +373,11 @@ public class ComService extends Service {
             if(bean.getConfirmed()) {
                 //update @newcredit con l'amuont ricevuto e settare cardstate in DATA_UPDATED
                 newCredit += Float.valueOf(bean.getAmount());
-                cardState = Constants.State.DATA_UPDATED;
                 responseOk = true;
+                Toast.makeText(getApplicationContext(), "STORED", Toast.LENGTH_SHORT).show();
+
                 Log.d("STORE TASK", "Confirmed:" + bean.getConfirmed() + "\nCredit:" + newCredit);
+                cardState = Constants.State.DATA_UPDATED;
 
             }
             //mAccountCallback.get().updateProgressBar(false);

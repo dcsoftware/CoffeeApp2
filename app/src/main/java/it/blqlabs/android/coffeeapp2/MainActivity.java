@@ -14,6 +14,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -65,13 +66,20 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case 1:
-                    if(msg.arg1 == 1) {
+                    if(msg.obj == 1) {
+                        Log.d("MAIN ACTIVITY", "Start progress bar");
                         progressBar.setVisibility(View.VISIBLE);
-                    } else if (msg.arg1 == 0) {
+                    } else if (msg.obj == 0) {
+                        Log.d("MAIN ACTIVITY", "Stop progress bar");
                         progressBar.setVisibility(View.INVISIBLE);
                     } else {
                         Toast.makeText(getApplicationContext() ,"MAIN ACTIVITY: error message", Toast.LENGTH_SHORT).show();
                     }
+                    break;
+                case 2:
+                    updateUserData();
+                    Log.d("MAIN ACTIVITY", "Update credit");
+                    break;
             }
             //onActionReceived(msg.obj.toString());
         }

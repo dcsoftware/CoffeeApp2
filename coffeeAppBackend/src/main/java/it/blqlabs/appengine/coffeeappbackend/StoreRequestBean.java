@@ -11,6 +11,7 @@ public class StoreRequestBean {
     private String amount;
     private String machineId;
 
+
     public String getMachineId() {
         return machineId;
     }

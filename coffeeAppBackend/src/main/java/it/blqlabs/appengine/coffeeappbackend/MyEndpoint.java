@@ -129,7 +129,7 @@ public class MyEndpoint {
 
         Entity userEntity = datastoreService.prepare(userQuery).asSingleEntity();
 
-        float userCredit = (Float) userEntity.getProperty(Constants.PROPERTY_USER_CREDIT);
+        float userCredit = Float.valueOf(userEntity.getProperty(Constants.PROPERTY_USER_CREDIT).toString());
         float amount = Float.valueOf(bean.getAmount());
 
         userCredit += amount;

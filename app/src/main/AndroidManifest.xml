@@ -2,15 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="it.blqlabs.android.coffeeapp2" >
 
-    <provider
-        android:name=".database.TransactionProvider"
-        android:authorities="it.blqlabs.android.coffeeapp2.provider"
-        android:enabled="true"
-        android:exported="false" >
-    </provider>
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.USE_CREDENTIALS" />
+
+    <!-- To auto-complete the email text field in the login form with the user's emails -->
+    <uses-permission android:name="android.permission.READ_PROFILE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <uses-feature
         android:name="android.hardware.nfc"
@@ -31,19 +30,25 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-
                 <category android:name="android.intent.category.DEFAULT" />
-
                 <data android:mimeType="application/coffeeap" />
             </intent-filter>
         </activity>
 
         <service
-            android:name=".ComService"
+            android:name=".OnLineComService"
             android:enabled="true"
             android:exported="false" >
         </service>
 
+        <activity
+            android:name=".RegisterUserActivity"
+            android:label="@string/title_activity_register_user"
+            android:parentActivityName=".MainActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.blqlabs.android.coffeeapp2.MainActivity" />
+        </activity>
     </application>
 
 </manifest>

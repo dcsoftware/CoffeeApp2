@@ -5,6 +5,8 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import it.blqlabs.appengine.coffeeappbackend.myApi.model.StoreRequestBean;
+
 import static nl.qbusict.cupboard.CupboardFactory.cupboard;
 
 /**
@@ -12,7 +14,7 @@ import static nl.qbusict.cupboard.CupboardFactory.cupboard;
  */
 public class TransactionsDBOpenHelper extends SQLiteOpenHelper {
 
-    private static final String DATABASE_NAME = "coffeeapp.db";
+    private static final String DATABASE_NAME = "coffeeapp2.db";
     private static final int DATABASE_VERSION = 1;
 
     private SQLiteDatabase db;

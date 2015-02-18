@@ -1,25 +1,29 @@
 package it.blqlabs.android.coffeeapp2.database;
 
+import it.blqlabs.appengine.coffeeappbackend.myApi.model.StoreRequestBean;
+
 /**
  * Created by davide on 24/10/14.
  */
 public class TransactionEntity {
     public Long _id;
-    public String transactionNumber;
-    public String userId;
     public String timestamp;
     public String amount;
     public String machineId;
-    public String encryptedKey = "0";
     public String transactionId;
-    public boolean synced = false;
+    public boolean confirmed = false;
 
-    public String getTransactionNumber() {
-        return transactionNumber;
+
+    public TransactionEntity(StoreRequestBean bean) {
+        this.transactionId = bean.getTransactionId();
+        this.timestamp = bean.getTimestamp();
+        this.machineId = bean.getMachineId();
+        this.amount = bean.getAmount();
+        this.confirmed = bean.getConfirmed();
     }
 
-    public void setTransactionNumber(String transactionNumber) {
-        this.transactionNumber = transactionNumber;
+    public Long get_id() {
+        return _id;
     }
 
     public String getMachineId() {
@@ -28,14 +32,6 @@ public class TransactionEntity {
 
     public void setMachineId(String machineId) {
         this.machineId = machineId;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
     }
 
     public String getTimestamp() {
@@ -55,18 +51,18 @@ public class TransactionEntity {
     }
 
     public String getTransactionId() {
-        return machineId + transactionNumber;
+        return transactionId;
     }
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
     }
 
-    public boolean isSynced() {
-        return synced;
+    public boolean isConfirmed() {
+        return confirmed;
     }
 
-    public void setSynced(boolean synced) {
-        this.synced = synced;
+    public void setConfirmed(boolean confirmed) {
+        this.confirmed = confirmed;
     }
 }

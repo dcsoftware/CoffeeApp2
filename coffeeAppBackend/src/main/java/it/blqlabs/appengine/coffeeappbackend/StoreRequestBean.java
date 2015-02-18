@@ -10,7 +10,24 @@ public class StoreRequestBean {
     private String timestamp;
     private String amount;
     private String machineId;
+    private String transactionId;
+    private boolean confirmed;
 
+    public boolean isConfirmed() {
+        return confirmed;
+    }
+
+    public void setConfirmed(boolean confirmed) {
+        this.confirmed = confirmed;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
 
     public String getMachineId() {
         return machineId;

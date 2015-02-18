@@ -14,21 +14,15 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.support.v4.util.Pair;
 import android.util.Log;
 import android.widget.Toast;
-
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
-
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
-import it.blqlabs.android.coffeeapp2.backend.LoginRequestAsyncTask;
-import it.blqlabs.android.coffeeapp2.backend.StoreTransactionAsyncTask;
 import it.blqlabs.android.coffeeapp2.database.TransactionEntity;
 import it.blqlabs.android.coffeeapp2.database.TransactionsDBOpenHelper;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
@@ -36,11 +30,10 @@ import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginRequestBean;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginResponseBean;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.StoreRequestBean;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.StoreResponseBean;
-
 import static nl.qbusict.cupboard.CupboardFactory.cupboard;
 
 
-public class ComService extends Service {
+public class OnLineComService extends Service {
     private static final String APP_AID = "FF000000001234";
     private static final String APDU_LE = "00";
     private static final String APDU_SELECT = "00A4";
@@ -108,6 +101,7 @@ public class ComService extends Service {
             db = new TransactionsDBOpenHelper(context).getWritableDatabase();
 
             isoDep = IsoDep.get(MainActivity.getTag());
+
             cardState = Constants.State.DISCONNECTED;
 
             Messenger messenger = MainActivity.getMainActivity().mMessenger;
@@ -151,17 +145,18 @@ public class ComService extends Service {
 
                                     cardState = Constants.State.WAITING_RESPONSE;
                                     responseOk = false;
+                                    messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
 
                                     new LoginAsyncTask().execute(loginRequest);
                                 }
                                 break;
                             case WAITING_RESPONSE:
                                 //START SPINNER
-                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
                                 while (!responseOk) ;
-                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
                                 break;
                             case AUTHENTICATED:
+                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
+
                                 userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
                                 newCredit = Float.valueOf(userCredit);
                                 data = (/*controlKey + "," + */userId + "," + userCredit).getBytes();
@@ -178,7 +173,7 @@ public class ComService extends Service {
 
                                 break;
                             case READING_STATUS:
-                                Thread.sleep(2000);
+                                Thread.sleep(1000);
 
                                 data = new byte[]{(byte) 0x11, (byte) 0x22};
                                 command = BuildApduCommand(APDU_READ_STATUS, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(data), APDU_LE);
@@ -201,9 +196,12 @@ public class ComService extends Service {
                                     storeRequest.setUserId(userId);
                                     storeRequest.setAmount("+" + String.valueOf(rechargeValue));
                                     storeRequest.setTimestamp(new String(timestamp));
+                                    storeRequest.setTransactionId(transactionNumber);
 
                                     //newCredit += rechargeValue;
                                     responseOk = false;
+                                    messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
+
                                     cardState = Constants.State.WAITING_RESPONSE;
                                     //cardState = Constants.State.DATA_UPDATED;
 
@@ -222,11 +220,14 @@ public class ComService extends Service {
                                     storeRequest.setUserId(userId);
                                     storeRequest.setAmount("-" + String.valueOf(purchaseValue));
                                     storeRequest.setTimestamp(new String(timestamp));
+                                    storeRequest.setTransactionId(transactionNumber);
 
 
                                     //newCredit -= purchaseValue;
                                     //STORE TRANSACTION TASK
                                     responseOk = false;
+                                    messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
+
                                     cardState = Constants.State.WAITING_RESPONSE;
                                     new StoreAsyncTask().execute(storeRequest);
                                     //cardState = Constants.State.DATA_UPDATED;
@@ -236,6 +237,8 @@ public class ComService extends Service {
 
                                 break;
                             case DATA_UPDATED:
+                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
+
                                 newCredit = (float)Math.round(newCredit * 100) / 100;
 
                                 settingEditor.putString(Constants.USER_CREDIT, String.valueOf(newCredit));
@@ -346,6 +349,7 @@ public class ComService extends Service {
     public class StoreAsyncTask extends AsyncTask<StoreRequestBean, Void, StoreResponseBean> {
 
         private MyApi myApiService;
+        private StoreRequestBean request;
 
         @Override
         protected void onPreExecute() {
@@ -354,6 +358,7 @@ public class ComService extends Service {
 
         @Override
         protected StoreResponseBean doInBackground(StoreRequestBean... params) {
+            request = params[0];
             MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
             myApiService = builder.build();
 
@@ -377,8 +382,13 @@ public class ComService extends Service {
                 Toast.makeText(getApplicationContext(), "STORED", Toast.LENGTH_SHORT).show();
 
                 Log.d("STORE TASK", "Confirmed:" + bean.getConfirmed() + "\nCredit:" + newCredit);
+                request.setConfirmed(true);
+                cupboard().withDatabase(db).put(new TransactionEntity(request));
                 cardState = Constants.State.DATA_UPDATED;
 
+            } else {
+                request.setConfirmed(false);
+                cupboard().withDatabase(db).put(new TransactionEntity(request));
             }
             //mAccountCallback.get().updateProgressBar(false);
         }

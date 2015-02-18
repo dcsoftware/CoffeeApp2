@@ -14,6 +14,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -51,7 +52,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     private SharedPreferences mSharedPref;
 
-    private CardReader reader;
+    private CardView cardStatus;
+    private CardView cardCredit;
 
 
     public Messenger mMessenger = new Messenger(new MessageHandler(this));
@@ -68,10 +70,10 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                 case 1:
                     if(msg.obj == 1) {
                         Log.d("MAIN ACTIVITY", "Start progress bar");
-                        progressBar.setVisibility(View.VISIBLE);
+                        //progressBar.setVisibility(View.VISIBLE);
                     } else if (msg.obj == 0) {
                         Log.d("MAIN ACTIVITY", "Stop progress bar");
-                        progressBar.setVisibility(View.INVISIBLE);
+                        //progressBar.setVisibility(View.INVISIBLE);
                     } else {
                         Toast.makeText(getApplicationContext() ,"MAIN ACTIVITY: error message", Toast.LENGTH_SHORT).show();
                     }
@@ -91,13 +93,16 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     String userId, userCredit;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.test_main);
-        int i = 0;
+        setContentView(R.layout.activity_main_new);
         mSharedPref = getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
+
+
+        cardStatus = (CardView)findViewById(R.id.card_connection_status);
+        cardCredit = (CardView)findViewById(R.id.card_credit);
+
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -108,7 +113,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
         logText = (TextView)findViewById(R.id.textView2);
         userIdText = (TextView)findViewById(R.id.textView);
-        userCreditText = (TextView)findViewById(R.id.textView3);
+        userCreditText = (TextView)findViewById(R.id.textView_credit);
         text3 = (TextView)findViewById(R.id.textView4);
         button = (Button)findViewById(R.id.button);
         purchaseButton = (Button)findViewById(R.id.button2);
@@ -116,11 +121,9 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         newUserButton = (Button) findViewById(R.id.button4);
         progressBar = (ProgressBar) findViewById(R.id.progressBar2);
 
-        reader = new CardReader(this, mContext);
-
         final OtpGenerator otpG = new OtpGenerator("ABCDEFGHIJ");
 
-        button.setOnClickListener(new View.OnClickListener() {
+        /*button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
@@ -181,7 +184,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
             }
         });
-        newUserButton.setClickable(false);
+        newUserButton.setClickable(false);*/
+
         isFirstRun();
 
         handleIntent(getIntent());
@@ -193,15 +197,16 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
         userId = userSharedPref.getString(Constants.USER_ID, "null");
         userCredit = userSharedPref.getString(Constants.USER_CREDIT, "null");
-        userIdText.setText(userId);
+        //userIdText.setText(userId);
         userCreditText.setText(userCredit);
     }
 
     public void isFirstRun() {
         if (mSharedPref.getBoolean(Constants.IS_FIRST_RUN, true)) {
-
             Toast.makeText(this, "FIRST RUN", Toast.LENGTH_SHORT).show();
-            newUserButton.setClickable(true);
+            Intent i = new Intent(MainActivity.this, RegisterUserActivity.class);
+            startActivityForResult(i, 100);
+            //newUserButton.setClickable(true);
 
             /*SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
             SharedPreferences.Editor userPrefEditor = userSharedPref.edit();
@@ -210,13 +215,34 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             userPrefEditor.putString(Constants.USER_CREDIT, "0");
             userPrefEditor.putString(Constants.USER_ID, "123456789");
             userPrefEditor.commit();*/
-
-            SharedPreferences.Editor mPrefEditor = mSharedPref.edit();
-            mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, false);
-            mPrefEditor.commit();
         } else {
             updateUserData();
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+            switch(requestCode) {
+                case 100:
+                    SharedPreferences.Editor mPrefEditor = mSharedPref.edit();
+                    switch(resultCode) {
+                        case 99:
+                            mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, false);
+                            mPrefEditor.commit();
+                            Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
+                            updateUserData();
+                            break;
+                        case 101:
+                            mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, true);
+                            mPrefEditor.commit();
+                            Toast.makeText(this, "User not registered", Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+            }
+
+
+
     }
 
     @Override
@@ -293,7 +319,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
             if(mTag != null) {
-                Intent readerService = new Intent(MainActivity.this, ComService.class);
+                Intent readerService = new Intent(MainActivity.this, OnLineComService.class);
                 startService(readerService);
                 //reader.StartReadingTag(mTag);
             }

@@ -56,7 +56,7 @@ public class MyEndpoint {
         String secretKey = "";
         String controlKey = "";
 
-        log.info("Received Data: UserId: " + userId + ",\nMachineId: " + machineId + ",\nOTP: " + otpReceived + ",\nTimestamp: " + timestamp);
+        log.info("Received Data: UserId: " + userId + "\nMachineId: " + machineId + "\nOTP: " + otpReceived + "\nTimestamp: " + timestamp);
 
         DatastoreService datastoreService = DatastoreServiceFactory.getDatastoreService();
         Query.Filter machineFilter = new Query.FilterPredicate(Constants.PROPERTY_MACHINE_ID, Query.FilterOperator.EQUAL, machineId);
@@ -86,7 +86,7 @@ public class MyEndpoint {
             Query userQuery = new Query(Constants.ENTITY_NAME_USER).setFilter(userFilter);
             Entity user = datastoreService.prepare(userQuery).asSingleEntity();
 
-            log.info("Generated data: SecretKey: " + secretKey + ",\nOTP: " + otpGenerated + ",\nTimestamp: " + otpGenerator.getTimestamp() + ",\nControlKey=" + controlKey);
+            log.info("Generated data: SecretKey: " + secretKey + "\nOTP: " + otpGenerated + "\nTimestamp: " + otpGenerator.getTimestamp() + "\nControlKey=" + controlKey);
 
             if (otpReceived == otpGenerated) {
                 confirmed = true;
@@ -134,13 +134,15 @@ public class MyEndpoint {
 
         userCredit += amount;
 
+        userCredit = (float)Math.round(userCredit * 100) / 100;
+
         try{
 
             userEntity.setProperty(Constants.PROPERTY_USER_CREDIT, userCredit);
             datastoreService.put(userEntity);
 
             Entity transaction = new Entity(Constants.ENTITY_NAME_CLIENT_TRANSACTION);
-            transaction.setProperty(Constants.PROPERTY_TRANSACTION_ID, bean.getId());
+            transaction.setProperty(Constants.PROPERTY_TRANSACTION_ID, bean.getTransactionId());
             transaction.setProperty(Constants.PROPERTY_USER_ID, bean.getUserId());
             transaction.setProperty(Constants.PROPERTY_MACHINE_ID, bean.getMachineId());
             transaction.setProperty(Constants.PROPERTY_TIMESTAMP, bean.getTimestamp());

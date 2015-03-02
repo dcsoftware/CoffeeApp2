@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.USE_CREDENTIALS" />
 
@@ -30,7 +31,9 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="application/coffeeap" />
             </intent-filter>
         </activity>
@@ -40,7 +43,11 @@
             android:enabled="true"
             android:exported="false" >
         </service>
-
+        <service
+            android:name=".OffLineComService"
+            android:enabled="true"
+            android:exported="false" >
+        </service>
         <activity
             android:name=".RegisterUserActivity"
             android:label="@string/title_activity_register_user"
@@ -49,6 +56,21 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="it.blqlabs.android.coffeeapp2.MainActivity" />
         </activity>
+        <activity
+            android:name=".HistoryActivity"
+            android:label="@string/title_activity_history"
+            android:parentActivityName=".MainActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="it.blqlabs.android.coffeeapp2.MainActivity" />
+        </activity>
+
+        <provider
+            android:name=".database.TransactionProvider"
+            android:authorities="it.blqlabs.android.coffeeapp2.provider"
+            android:enabled="true"
+            android:exported="false" >
+        </provider>
     </application>
 
 </manifest>

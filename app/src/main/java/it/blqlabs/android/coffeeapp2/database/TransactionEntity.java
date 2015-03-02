@@ -22,6 +22,10 @@ public class TransactionEntity {
         this.confirmed = bean.getConfirmed();
     }
 
+    public TransactionEntity() {
+
+    }
+
     public Long get_id() {
         return _id;
     }

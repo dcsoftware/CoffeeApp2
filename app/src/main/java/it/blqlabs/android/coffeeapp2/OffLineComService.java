@@ -14,6 +14,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v4.util.Pair;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -55,21 +56,20 @@ public class OffLineComService extends Service {
     private static final byte[] RESULT_DATA_UPDATED = {(byte) 0x55, (byte) 0x66};
     private static final byte[] RESULT_PRIV_APP_SELECTED = {(byte) 0x66, (byte) 0x77};
     private static final byte[] RESULT_AUTH_ERROR = {(byte) 0xB1, (byte) 0xB2};
-    private static final String CARD_READER = "CARD READER";
-    private static final int MESSENGER_PROGRESS_BAR = 1;
-    private static final int MESSENGER_UPDATE_DATA = 2;
-    private static final int START_PROGRESS = 1;
-    private static final int STOP_PROGRESS = 0;
-
 
 
     private Looper mServiceLooper;
     private ServiceHandler mServiceHandler;
 
     private IsoDep isoDep;
+
+    private String userName = "";
+    private String userSurname = "";
     private String userCredit = "";
     private String userId = "";
     private String machineId = "";
+    private String machineName = "";
+    private boolean recharged = false;
     private Constants.State cardState;
     private SharedPreferences cardSetting;
     private SharedPreferences.Editor settingEditor;
@@ -78,15 +78,16 @@ public class OffLineComService extends Service {
     private byte[] result;
     private byte[] data;
     private byte[] statusWord;
+    private byte[] payload;
+    private String transactionNumber = "";
+    private int rLength;
     private float newCredit = 0;
-    private boolean responseOk = false;
-    private String secretKey = "";
-    private String controlKey = "";
-    private String transactionNumber;
-    private OtpGenerator otpGenerator;
-
 
     private SQLiteDatabase db;
+
+    private String secret = "ABCDEFGHIJ";
+
+    private OtpGenerator mOtpGenerator;
 
     private final class ServiceHandler extends Handler {
         public ServiceHandler(Looper looper) {
@@ -96,174 +97,223 @@ public class OffLineComService extends Service {
         public void handleMessage(Message msg) {
             Context context = MainActivity.getContext();
             prefs = context.getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
+            //secret = prefs.getString(Constants.PREF_SECRET_KEY, null);
 
+            mOtpGenerator = new OtpGenerator(secret);
             cardSetting = context.getSharedPreferences(Constants.USER_SHARED_PREF, Context.MODE_PRIVATE);
             settingEditor = cardSetting.edit();
+            userName = cardSetting.getString(Constants.USER_NAME, "");
+            userSurname = cardSetting.getString(Constants.USER_SURNAME, "");
+            userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
             userId = cardSetting.getString(Constants.USER_ID, "");
 
-            db = new TransactionsDBOpenHelper(context).getWritableDatabase();
+            //db = new TransactionsDBOpenHelper(context).getWritableDatabase();
 
             isoDep = IsoDep.get(MainActivity.getTag());
-
             cardState = Constants.State.DISCONNECTED;
 
-            Messenger messenger = MainActivity.getMainActivity().mMessenger;
-            if (isoDep != null) {
+            Messenger messenger= MainActivity.getMainActivity().mMessenger;
+            if(isoDep != null) {
 
                 try {
                     isoDep.setTimeout(20000);
                     isoDep.connect();
                     cardState = Constants.State.CONNECTED;
-                    //messenger.send(Message.obtain(null, cardState.ordinal(), cardState));
+                    messenger.send(Message.obtain(null, cardState.ordinal(), cardState));
 
-                    while (isoDep.isConnected()) {
-                        switch (cardState) {
+                    while(isoDep.isConnected()) {
+                        switch(cardState) {
                             case CONNECTED:
                                 Thread.sleep(500);
 
+                                Log.d("TAG", "SELECTING PRIV APPLICATION");
                                 command = BuildApduCommand(APDU_SELECT, APDU_P1_SELECT_BY_NAME, APDU_P2_SELECT_BY_NAME, APP_AID, APDU_LE);
-                                result = isoDep.transceive(command);
-                                statusWord = new byte[]{result[0], result[1]};
+                                try {
+                                    result = isoDep.transceive(command);
+                                    statusWord = new byte[]{result[0], result[1]};
+                                    Log.d("TAG", "Result lenght = " + result.length);
+                                    Log.d("TAG", "result = " + new String(result));
+                                    if (Arrays.equals(RESULT_PRIV_APP_SELECTED, statusWord)) {
+//                                        payload = Arrays.copyOfRange(result, 2, 9);
+//                                        machineId = new String(Arrays.copyOfRange(result, 2, 10));
+//                                        secret = new String(Arrays.copyOfRange(result, 11, result.length));
 
-                                Log.d(CARD_READER, "App Selection:\nStatus Word:" + new String(statusWord)
-                                        + "\nResult:" + new String(result));
+                                        //new LoginRequestAsyncTask().execute();
+                                        cardState = Constants.State.APP_SELECTED;
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Machine ID: " + machineId + ", Secret: " + secret));
+                                        Log.d("TAG", "machineId = " + machineId + ", machineName = " + secret);
 
-                                if (Arrays.equals(RESULT_PRIV_APP_SELECTED, statusWord)) {
-                                    machineId = new String(Arrays.copyOfRange(result, 2, 10));
-                                    secretKey = new String(Arrays.copyOfRange(result, 11, result.length));
-
-                                    Log.d(CARD_READER, "App Selection:\nMachine ID:" + machineId
-                                            + "\nSercet Key:" + secretKey);
-
-                                    otpGenerator = new OtpGenerator(secretKey);
-
-                                    LoginRequestBean loginRequest = new LoginRequestBean();
-                                    loginRequest.setMachineId(machineId);
-                                    loginRequest.setUserId(userId);
-                                    loginRequest.setOtpPassword(otpGenerator.getCode1());
-                                    loginRequest.setTimestamp(otpGenerator.getTimestamp());
-
-                                    Log.d(CARD_READER, "Backend Login Request:\nOTP Code:" + loginRequest.getOtpPassword()
-                                            + "\nTimestamp:" + loginRequest.getTimestamp());
-
-                                    cardState = Constants.State.WAITING_RESPONSE;
-                                    responseOk = false;
-
+                                    }
+                                } catch (IOException e) {
+                                    Log.d("TAG", "connect failed");
                                 }
+
                                 break;
-                            case WAITING_RESPONSE:
-                                //START SPINNER
-                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
-                                while (!responseOk) ;
-                                messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
+                            case APP_SELECTED:
+                                Thread.sleep(500);
+
+                                Log.d("TAG", "AUTHENTICATING CON OTP");
+
+                                String pw = null;
+                                try {
+                                    pw = String.valueOf(mOtpGenerator.getCode1());
+                                } catch (NoSuchAlgorithmException e) {
+                                    e.printStackTrace();
+                                } catch (InvalidKeyException e) {
+                                    e.printStackTrace();
+                                }
+
+                                if (pw.length() == 5) {
+                                    String s = "0" + pw;
+                                    pw = s;
+                                }
+                                if (pw.length() == 4) {
+                                    String s = "00" + pw;
+                                    pw = s;
+                                }
+                                if (pw.length() == 3) {
+                                    String s = "000" + pw;
+                                    pw = s;
+                                }
+
+                                byte[] pwByte = pw.getBytes();
+
+                                messenger.send(Message.obtain(null, cardState.ordinal(), "OTP Authorization, code: " + pw));
+                                messenger.send(Message.obtain(null, cardState.ordinal(), "Hex Code: " + ByteArrayToHexString(pwByte)));
+
+                                command = BuildApduCommand(APDU_AUTHENTICATE, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(pwByte), APDU_LE);
+                                try {
+                                    result = isoDep.transceive(command);
+                                    statusWord = new byte[]{result[0], result[1]};
+
+                                    if (Arrays.equals(RESULT_AUTH_ERROR, statusWord)) {
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Authentication error!!"));
+                                        Thread.sleep(2000);
+                                    } else if (Arrays.equals(RESULT_OK, statusWord)) {
+                                        cardState = Constants.State.AUTHENTICATED;
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Authenticated!!"));
+                                    }
+                                } catch (IOException e) {
+                                    Log.d("TAG", "app selection failed");
+                                }
                                 break;
                             case AUTHENTICATED:
-                                userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
+                                Thread.sleep(500);
+
+                                Log.d("TAG", "SENDING USER INFORMATION");
+
                                 newCredit = Float.valueOf(userCredit);
-                                data = (/*controlKey + "," + */userId + "," + userCredit).getBytes();
+                                messenger.send(Message.obtain(null, cardState.ordinal(), "Logging in... " + newCredit));
+
+                                data = (userId + "," + userCredit + ";").getBytes();
+
                                 command = BuildApduCommand(APDU_LOG_IN, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(data), APDU_LE);
+                                try {
+                                    result = isoDep.transceive(command);
+                                    statusWord = new byte[]{result[0], result[1]};
 
-                                result = isoDep.transceive(command);
-                                statusWord = new byte[]{result[0], result[1]};
-                                Log.d(CARD_READER, "Log in:\nStatus Word:" + new String(statusWord)
-                                        + "\nResult:" + new String(result));
-                                if (Arrays.equals(RESULT_OK, statusWord)) {
-                                    cardState = Constants.State.READING_STATUS;
-
+                                    if (Arrays.equals(RESULT_OK, statusWord)) {
+                                        cardState = Constants.State.READING_STATUS;
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Logged In..."));
+                                    }
+                                } catch (IOException e) {
+                                    Log.d("TAG", "autentication failed");
                                 }
-
                                 break;
                             case READING_STATUS:
-                                Thread.sleep(2000);
+                                Thread.sleep(500);
 
+                                Log.d("TAG", "READING STATUS");
+
+                                messenger.send(Message.obtain(null, cardState.ordinal(), cardState));
                                 data = new byte[]{(byte) 0x11, (byte) 0x22};
-                                command = BuildApduCommand(APDU_READ_STATUS, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(data), APDU_LE);
-                                result = isoDep.transceive(command);
-                                statusWord = new byte[]{result[0], result[1]};
-
+                                byte[] amount;
                                 byte[] timestamp;
-                                Log.d("READING STATUS", "result: " + new String(result));
-                                if(Arrays.equals(RESULT_STATUS_WAITING, statusWord)) {
-                                    cardState = Constants.State.READING_STATUS;
-                                    Log.d("READING STATUS", "WAITING");
-                                } else if (Arrays.equals(RESULT_STATUS_RECHARGED, statusWord)) {
-                                    timestamp = Arrays.copyOfRange(result, 8, 18);
-                                    float rechargeValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                    transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
 
-                                    Log.d("READING STATUS", "RECHARGED: " + rechargeValue + ", id=" + transactionNumber);
-                                    StoreRequestBean storeRequest = new StoreRequestBean();
-                                    storeRequest.setMachineId(machineId);
-                                    storeRequest.setUserId(userId);
-                                    storeRequest.setAmount("+" + String.valueOf(rechargeValue));
-                                    storeRequest.setTimestamp(new String(timestamp));
-                                    storeRequest.setTransactionId(transactionNumber);
-
-                                    cupboard().withDatabase(db).put(storeRequest);
-                                    //newCredit += rechargeValue;
-                                    responseOk = false;
-                                    cardState = Constants.State.WAITING_RESPONSE;
-                                    //cardState = Constants.State.DATA_UPDATED;
-
-                                    //STORE TRANSACTION TASK
-
-                                } else if (Arrays.equals(RESULT_STATUS_PURCHASE, statusWord)) {
-                                    timestamp = Arrays.copyOfRange(result, 8, 18);
-                                    float purchaseValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                    transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
-
-                                    Log.d("READING STATUS", "PURCHASE: " + purchaseValue + ", id=" + transactionNumber);
-
-                                    StoreRequestBean storeRequest = new StoreRequestBean();
-                                    storeRequest.setMachineId(machineId);
-                                    storeRequest.setUserId(userId);
-                                    storeRequest.setAmount("-" + String.valueOf(purchaseValue));
-                                    storeRequest.setTimestamp(new String(timestamp));
-                                    storeRequest.setTransactionId(transactionNumber);
-                                    cupboard().withDatabase(db).put(storeRequest);
-
-
-                                    //newCredit -= purchaseValue;
-                                    //STORE TRANSACTION TASK
-                                    responseOk = false;
-                                    cardState = Constants.State.WAITING_RESPONSE;
-                                    //cardState = Constants.State.DATA_UPDATED;
-
-
+                                command = BuildApduCommand(APDU_READ_STATUS, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(data), APDU_LE);
+                                Thread.sleep(1500);
+                                try {
+                                    result = isoDep.transceive(command);
+                                    statusWord = new byte[]{result[0], result[1]};
+                                    Log.d("TAG", "Result lenght = " + result.length);
+                                    Log.d("TAG", "Status word = " + new String(result));
+                                    if (Arrays.equals(RESULT_STATUS_WAITING, statusWord)) {
+                                        cardState = Constants.State.READING_STATUS;
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Status: WAITING!"));
+                                    } else if (Arrays.equals(RESULT_STATUS_RECHARGED, statusWord)) {
+                                        //payload = Arrays.copyOfRange(result, 2, result.length);
+                                        timestamp = Arrays.copyOfRange(result, 8, 18);
+                                        float rechargeValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
+                                        transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "RECHARGED!! " + " " + new String(timestamp) + "id: " + transactionNumber));
+                                        newCredit += rechargeValue;
+                                        /*TransactionEntity transactionEntity = new TransactionEntity();
+                                        transactionEntity.setTransactionNumber(transactionNumber);
+                                        transactionEntity.setMachineId(machineId);
+                                        transactionEntity.setUserId(userId);
+                                        transactionEntity.setTimestamp(new String(timestamp));
+                                        transactionEntity.setAmount("+" + String.valueOf(rechargeValue));
+                                        cupboard().withDatabase(db).put(transactionEntity);
+                                        new StoreTransactionAsyncTask().execute(new Pair<Context, TransactionEntity>(context, transactionEntity));*/
+                                        cardState = Constants.State.DATA_UPDATED;
+                                    } else if (Arrays.equals(RESULT_STATUS_PURCHASE, statusWord)) {
+                                        //payload = Arrays.copyOfRange(result, 2, result.length);
+                                        timestamp = Arrays.copyOfRange(result, 8, 18);
+                                        float purchaseValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
+                                        transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
+                                        messenger.send(Message.obtain(null, cardState.ordinal(), "PURCHASE! " + " " + new String(timestamp) + "id: " + transactionNumber));
+                                        newCredit -= purchaseValue;
+                                        /*TransactionEntity transactionEntity = new TransactionEntity();
+                                        transactionEntity.setTransactionNumber(transactionNumber);
+                                        transactionEntity.setMachineId(machineId);
+                                        transactionEntity.setUserId(userId);
+                                        transactionEntity.setTimestamp(new String(timestamp));
+                                        transactionEntity.setAmount("-" + String.valueOf(purchaseValue));
+                                        cupboard().withDatabase(db).put(transactionEntity);
+                                        new StoreTransactionAsyncTask().execute(new Pair<Context, TransactionEntity>(context, transactionEntity));*/
+                                        cardState = Constants.State.DATA_UPDATED;
+                                    }
+                                } catch (IOException e) {
+                                    Log.d("TAG", e.getMessage() + new String(result));
                                 }
-
                                 break;
                             case DATA_UPDATED:
-                                newCredit = (float)Math.round(newCredit * 100) / 100;
+                                Thread.sleep(500);
 
+                                Log.d("TAG", "UPDATING USER INFORMATION");
+
+                                messenger.send(Message.obtain(null, cardState.ordinal(), "Credit update: " + newCredit));
+                                newCredit = (float)Math.round(newCredit * 100) / 100;
                                 settingEditor.putString(Constants.USER_CREDIT, String.valueOf(newCredit));
                                 settingEditor.commit();
-
                                 userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
-                                Log.d("COM SERVICE", "User credit updated: " + userCredit);
-                                messenger.send(Message.obtain(null, MESSENGER_UPDATE_DATA, 1));
 
                                 cardState = Constants.State.AUTHENTICATED;
+                                /*data = cardSetting.getString(Constants.USER_CREDIT, "").getBytes();
 
+                                command = BuildApduCommand(APDU_UPDATE_CREDIT, APDU_P1_GENERAL, APDU_P1_GENERAL, ByteArrayToHexString(data), APDU_LE);
+                                result = isoDep.transceive(command);
+
+                                statusWord = new byte[]{result[0], result[1]};
+
+                                if (Arrays.equals(RESULT_DATA_UPDATED, statusWord)) {
+                                    cardState = Constants.State.READING_STATUS;
+                                }*/
                                 break;
+
                         }
                     }
-
+                } catch (IOException e) {
+                    e.printStackTrace();
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (InvalidKeyException e) {
-                    e.printStackTrace();
                 }
-                // Stop the service using the startId, so that we don't stop
-                // the service in the middle of handling another job
-                stopSelf(msg.arg1);
             }
+            // Stop the service using the startId, so that we don't stop
+            // the service in the middle of handling another job
+            stopSelf(msg.arg1);
         }
 
         public String ByteArrayToHexString(byte[] bytes) {

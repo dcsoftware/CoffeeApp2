@@ -16,9 +16,12 @@ import android.widget.Toast;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestInitializer;
 
 import java.io.IOException;
 
+import it.blqlabs.android.coffeeapp2.OtpGenerator.Clock;
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.UserBean;
@@ -29,7 +32,7 @@ public class RegisterUserActivity extends ActionBarActivity {
     Button registerButton, okButton;
     TextView textArea;
     private static final int REQUEST_ACCOUNT_PICKER = 2;
-    private static GoogleAccountCredential credential;
+    public static GoogleAccountCredential credential;
     private SharedPreferences privSharedPrefs;
     private String accountName;
 
@@ -54,6 +57,7 @@ public class RegisterUserActivity extends ActionBarActivity {
                 if(credential.getSelectedAccountName() != null) {
                     Toast.makeText(getApplicationContext(), "Logged in with: " + credential.getSelectedAccountName(), Toast.LENGTH_LONG).show();
                 } else {
+                    registerButton.setEnabled(false);
                     chooseAccount();
                 }
             }
@@ -95,7 +99,7 @@ public class RegisterUserActivity extends ActionBarActivity {
                         prefsEditor.commit();
                         UserBean newUser = new UserBean();
                         newUser.setUserEmail(accountName);
-                        newUser.setRegistrationTimestamp(String.valueOf(new OtpGenerator(null).getTimestamp()));
+                        newUser.setRegistrationTimestamp(String.valueOf(new Clock().getCurrentSecond()));
 
                         new RegisterTask().execute(newUser);
                     }
@@ -120,7 +124,13 @@ public class RegisterUserActivity extends ActionBarActivity {
 
         @Override
         protected UserBean doInBackground(UserBean... params) {
-            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
+            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), new HttpRequestInitializer() {
+                @Override
+                public void initialize(HttpRequest httpRequest) throws IOException {
+                    httpRequest.setConnectTimeout(20000);
+                    httpRequest.setReadTimeout(10000);
+                }
+            });
             myApiService = builder.build();
 
             UserBean responseUser = new UserBean();
@@ -135,20 +145,23 @@ public class RegisterUserActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(UserBean bean) {
-            SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
-            SharedPreferences.Editor userPrefEditor = userSharedPref.edit();
+            if(bean.size() != 0) {
+                SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
+                SharedPreferences.Editor userPrefEditor = userSharedPref.edit();
 
-            userPrefEditor.putString(Constants.USER_NAME, "Davide");
-            userPrefEditor.putString(Constants.USER_SURNAME, "Corradini");
-            userPrefEditor.putString(Constants.USER_CREDIT, bean.getUserCredit());
-            userPrefEditor.putString(Constants.USER_ID, bean.getUserId());
-            userPrefEditor.putString("userEmail", bean.getUserEmail());
-            userPrefEditor.commit();
+                userPrefEditor.putString(Constants.USER_NAME, "Davide");
+                userPrefEditor.putString(Constants.USER_SURNAME, "Corradini");
+                userPrefEditor.putString(Constants.USER_CREDIT, bean.getUserCredit());
+                userPrefEditor.putString(Constants.USER_ID, bean.getUserId());
+                userPrefEditor.putString("userEmail", bean.getUserEmail());
+                userPrefEditor.commit();
 
-            textArea.setText("User Email: " + bean.getUserEmail() + "\nUser ID: " + bean.getUserId() + "\nUser Credit: " + bean.getUserCredit());
+                textArea.setText("User Email: " + bean.getUserEmail() + "\nUser ID: " + bean.getUserId() + "\nUser Credit: " + bean.getUserCredit());
 
-            okButton.setEnabled(true);
-
+                okButton.setEnabled(true);
+            } else {
+                registerButton.setEnabled(true);
+            }
 
             //updateUserData();
 

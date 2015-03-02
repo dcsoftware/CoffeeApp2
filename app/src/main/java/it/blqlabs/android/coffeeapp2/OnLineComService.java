@@ -52,6 +52,7 @@ public class OnLineComService extends Service {
     private static final byte[] RESULT_DATA_UPDATED = {(byte) 0x55, (byte) 0x66};
     private static final byte[] RESULT_PRIV_APP_SELECTED = {(byte) 0x66, (byte) 0x77};
     private static final byte[] RESULT_AUTH_ERROR = {(byte) 0xB1, (byte) 0xB2};
+    private static final byte[] RESULT_FUNCTION_NOT_SUPPORTED = {(byte) 0x6A, (byte) 0x81};
     private static final String CARD_READER = "CARD READER";
     private static final int MESSENGER_PROGRESS_BAR = 1;
     private static final int MESSENGER_UPDATE_DATA = 2;
@@ -92,8 +93,7 @@ public class OnLineComService extends Service {
         @Override
         public void handleMessage(Message msg) {
             Context context = MainActivity.getContext();
-            prefs = context.getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
-
+            Log.d(CARD_READER, "SERVICE STARTING...");
             cardSetting = context.getSharedPreferences(Constants.USER_SHARED_PREF, Context.MODE_PRIVATE);
             settingEditor = cardSetting.edit();
             userId = cardSetting.getString(Constants.USER_ID, "");
@@ -143,11 +143,16 @@ public class OnLineComService extends Service {
                                     Log.d(CARD_READER, "Backend Login Request:\nOTP Code:" + loginRequest.getOtpPassword()
                                             + "\nTimestamp:" + loginRequest.getTimestamp());
 
-                                    cardState = Constants.State.WAITING_RESPONSE;
+                                    //cardState = Constants.State.WAITING_RESPONSE;
+                                    cardState = Constants.State.AUTHENTICATED;
                                     responseOk = false;
                                     messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, START_PROGRESS));
 
-                                    new LoginAsyncTask().execute(loginRequest);
+                                    //new LoginAsyncTask().execute(loginRequest);
+                                } else if (Arrays.equals(RESULT_FUNCTION_NOT_SUPPORTED, statusWord)) {
+                                    Toast.makeText(MainActivity.getContext(), "App Selection:Command not Supported", Toast.LENGTH_SHORT).show();
+                                    Log.d("APP SELECTION", "Command not supported");
+                                    cardState = Constants.State.CONNECTED;
                                 }
                                 break;
                             case WAITING_RESPONSE:
@@ -155,6 +160,7 @@ public class OnLineComService extends Service {
                                 while (!responseOk) ;
                                 break;
                             case AUTHENTICATED:
+                                Thread.sleep(500);
                                 messenger.send(Message.obtain(null, MESSENGER_PROGRESS_BAR, STOP_PROGRESS));
 
                                 userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
@@ -169,6 +175,10 @@ public class OnLineComService extends Service {
                                 if (Arrays.equals(RESULT_OK, statusWord)) {
                                     cardState = Constants.State.READING_STATUS;
 
+                                } else if (Arrays.equals(RESULT_FUNCTION_NOT_SUPPORTED, statusWord)) {
+                                    Toast.makeText(MainActivity.getContext(), "LOG IN:Command not Supported", Toast.LENGTH_SHORT).show();
+                                    Log.d("LOG IN", "Command not supported");
+                                    cardState = Constants.State.AUTHENTICATED;
                                 }
 
                                 break;
@@ -233,6 +243,10 @@ public class OnLineComService extends Service {
                                     //cardState = Constants.State.DATA_UPDATED;
 
 
+                                } else if (Arrays.equals(RESULT_FUNCTION_NOT_SUPPORTED, statusWord)) {
+                                    Toast.makeText(MainActivity.getContext(), "READING STATUS:Command not Supported", Toast.LENGTH_SHORT).show();
+                                    Log.d("READING STATUS", "Command not supported");
+                                    cardState = Constants.State.READING_STATUS;
                                 }
 
                                 break;
@@ -331,16 +345,22 @@ public class OnLineComService extends Service {
 
         @Override
         protected void onPostExecute(LoginResponseBean bean) {
-            if(bean.getLogged()) {
-                controlKey = bean.getControlKey();
-                settingEditor.putString(Constants.USER_CREDIT, bean.getUserCredit());
-                settingEditor.commit();
-                cardState = Constants.State.AUTHENTICATED;
-                responseOk = true;
-                Toast.makeText(getApplicationContext(), "LOGGED", Toast.LENGTH_SHORT).show();
-                Log.d("LOGIN TASK", "Confirmed:" + bean.getLogged() + "\nControl Key:" + controlKey);
+            if (bean.size() != 0) {
+                if (bean.getLogged()) {
+                    controlKey = bean.getControlKey();
+                    settingEditor.putString(Constants.USER_CREDIT, bean.getUserCredit());
+                    settingEditor.commit();
+                    cardState = Constants.State.AUTHENTICATED;
+                    responseOk = true;
+                    Toast.makeText(getApplicationContext(), "LOGGED", Toast.LENGTH_SHORT).show();
+                    Log.d("LOGIN TASK", "Confirmed:" + bean.getLogged() + "\nControl Key:" + controlKey);
+                } else {
+                    cardState = Constants.State.AUTHENTICATED;
+                    Log.d("LOGIN TASK", "Error loggin user in");
+                }
             } else {
-                Log.d("LOGIN TASK", "Error loggin user in");
+                Log.d("LOGIN TASK", "Connection error");
+
             }
             //mAccountCallback.get().updateProgressBar(false);
         }
@@ -375,20 +395,25 @@ public class OnLineComService extends Service {
 
         @Override
         protected void onPostExecute(StoreResponseBean bean) {
-            if(bean.getConfirmed()) {
-                //update @newcredit con l'amuont ricevuto e settare cardstate in DATA_UPDATED
-                newCredit += Float.valueOf(bean.getAmount());
-                responseOk = true;
-                Toast.makeText(getApplicationContext(), "STORED", Toast.LENGTH_SHORT).show();
+            if (bean.size() != 0) {
+                if (bean.getConfirmed()) {
+                    //update @newcredit con l'amuont ricevuto e settare cardstate in DATA_UPDATED
+                    newCredit += Float.valueOf(bean.getAmount());
+                    responseOk = true;
+                    Toast.makeText(getApplicationContext(), "STORED", Toast.LENGTH_SHORT).show();
 
-                Log.d("STORE TASK", "Confirmed:" + bean.getConfirmed() + "\nCredit:" + newCredit);
-                request.setConfirmed(true);
-                cupboard().withDatabase(db).put(new TransactionEntity(request));
-                cardState = Constants.State.DATA_UPDATED;
+                    Log.d("STORE TASK", "Confirmed:" + bean.getConfirmed() + "\nCredit:" + newCredit);
+                    request.setConfirmed(true);
+                    cupboard().withDatabase(db).put(new TransactionEntity(request));
+                    cardState = Constants.State.DATA_UPDATED;
 
+                } else {
+                    Log.d("STORE TASK", "Not Confirmed:\nCredit:" + newCredit);
+                    request.setConfirmed(false);
+                    cupboard().withDatabase(db).put(new TransactionEntity(request));
+                }
             } else {
-                request.setConfirmed(false);
-                cupboard().withDatabase(db).put(new TransactionEntity(request));
+                Log.d("STORE TASK", "Connection Error");
             }
             //mAccountCallback.get().updateProgressBar(false);
         }

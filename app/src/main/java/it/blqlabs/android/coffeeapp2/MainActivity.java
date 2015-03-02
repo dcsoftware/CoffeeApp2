@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.os.AsyncTask;
@@ -29,11 +31,9 @@ import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Random;
-
+import it.blqlabs.android.coffeeapp2.OtpGenerator.Clock;
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
+import it.blqlabs.android.coffeeapp2.database.TransactionsDBOpenHelper;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginRequestBean;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginResponseBean;
@@ -49,6 +49,10 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
     private static Context mContext;
     private static MainActivity mMainActivity;
     private static final String MIME_APPLICATION = "application/coffeeapp2";
+    private MenuItem itemProgress;
+    private boolean onLineMode = false;
+    private ConnectivityManager connManager;
+    private NetworkInfo netInfo;
 
     private SharedPreferences mSharedPref;
 
@@ -70,9 +74,14 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                 case 1:
                     if(msg.obj == 1) {
                         Log.d("MAIN ACTIVITY", "Start progress bar");
+                        itemProgress.setActionView(R.layout.progress);
+                        itemProgress.expandActionView();
                         //progressBar.setVisibility(View.VISIBLE);
                     } else if (msg.obj == 0) {
                         Log.d("MAIN ACTIVITY", "Stop progress bar");
+                        itemProgress.collapseActionView();
+                        itemProgress.setActionView(null);
+                        MainActivity.this.invalidateOptionsMenu();
                         //progressBar.setVisibility(View.INVISIBLE);
                     } else {
                         Toast.makeText(getApplicationContext() ,"MAIN ACTIVITY: error message", Toast.LENGTH_SHORT).show();
@@ -97,12 +106,19 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_new);
+
+        checkConnection();
+        if(onLineMode){
+            Toast.makeText(this, "ON LINE MODE", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
+
+        }
         mSharedPref = getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
 
 
         cardStatus = (CardView)findViewById(R.id.card_connection_status);
         cardCredit = (CardView)findViewById(R.id.card_credit);
-
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -192,6 +208,15 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     }
 
+    public void checkConnection() {
+        connManager = (ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+
+        netInfo = connManager.getActiveNetworkInfo();
+        NetworkInfo.DetailedState state = netInfo.getDetailedState();
+
+        onLineMode = netInfo != null && netInfo.isConnected();
+    }
+
     public void updateUserData() {
         SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
 
@@ -248,7 +273,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        getMenuInflater().inflate(R.menu.menu_new_main, menu);
+        itemProgress = menu.findItem(R.id.action_refresh);
         return true;
     }
 
@@ -262,6 +288,42 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
+        }
+
+        if(id == R.id.action_refresh) {
+            itemProgress = item;
+            itemProgress.setActionView(R.layout.progress);
+            itemProgress.expandActionView();
+
+            UserBean bean = new UserBean();
+            bean.setUserId(userId);
+            bean.setUserCredit(userCredit);
+            bean.setRegistrationTimestamp(String.valueOf(new Clock().getCurrentSecond()));
+            checkConnection();
+            if(onLineMode){
+                Toast.makeText(this, "ON LINE MODE", Toast.LENGTH_SHORT).show();
+                new CheckUserDataTask().execute(bean);
+            } else {
+                Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
+                itemProgress.collapseActionView();
+                itemProgress.setActionView(null);
+                MainActivity.this.invalidateOptionsMenu();
+            }
+        }
+
+        if(id == R.id.action_history) {
+            Intent i = new Intent(MainActivity.this, HistoryActivity.class);
+            startActivityForResult(i, 200);
+        }
+
+        if(id == R.id.action_reset) {
+            new TransactionsDBOpenHelper(getContext()).reset();
+            SharedPreferences.Editor editor = mSharedPref.edit();
+            editor.putString("ACCOUNT_NAME", null);
+            editor.putBoolean(Constants.IS_FIRST_RUN, true);
+            editor.commit();
+            RegisterUserActivity.credential.setSelectedAccountName(null);
+            finish();
         }
 
         return super.onOptionsItemSelected(item);
@@ -319,7 +381,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             mTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
             if(mTag != null) {
-                Intent readerService = new Intent(MainActivity.this, OnLineComService.class);
+                //Intent readerService = new Intent(MainActivity.this, OnLineComService.class);
+                Intent readerService = new Intent(MainActivity.this, OffLineComService.class);
                 startService(readerService);
                 //reader.StartReadingTag(mTag);
             }
@@ -336,6 +399,45 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     public static MainActivity getMainActivity() {
         return mMainActivity;
+    }
+
+    public class CheckUserDataTask extends AsyncTask<UserBean, Void, ResponseBean> {
+
+        private MyApi myApiService;
+
+        @Override
+        protected ResponseBean doInBackground(UserBean... params) {
+            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
+            myApiService = builder.build();
+
+            ResponseBean response = new ResponseBean();
+
+            try {
+                response = myApiService.checkUserData(params[0]).execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return response;
+        }
+
+        @Override
+        protected void onPostExecute(ResponseBean responseBean) {
+            if(responseBean.size() != 0) {
+                itemProgress.collapseActionView();
+                itemProgress.setActionView(null);
+                MainActivity.this.invalidateOptionsMenu();
+                if (responseBean.getConfirmed()) {
+                    Toast.makeText(MainActivity.this, "DATA OK", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "DATA NOT OK", Toast.LENGTH_SHORT).show();
+
+                }
+            } else {
+                Toast.makeText(MainActivity.this, "DATA NULL", Toast.LENGTH_SHORT).show();
+
+            }
+        }
     }
 
     public class LoginAsyncTask extends AsyncTask<LoginRequestBean, Void, LoginResponseBean> {

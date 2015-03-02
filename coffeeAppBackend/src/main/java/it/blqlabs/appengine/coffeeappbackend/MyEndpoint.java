@@ -191,6 +191,75 @@ public class MyEndpoint {
         return response;
     }
 
+    @ApiMethod(name = "checkUserData")
+    public ResponseBean checkUserData(UserBean bean) {
+        DatastoreService datastoreService = DatastoreServiceFactory.getDatastoreService();
+
+        Query.Filter userFilter = new Query.FilterPredicate(Constants.PROPERTY_USER_ID, Query.FilterOperator.EQUAL, bean.getUserId());
+        Query userQuery = new Query(Constants.ENTITY_NAME_USER).setFilter(userFilter);
+        Entity user = datastoreService.prepare(userQuery).asSingleEntity();
+        String userId = (String)user.getProperty(Constants.PROPERTY_USER_ID);
+        String userCredit = user.getProperty(Constants.PROPERTY_USER_CREDIT).toString();
+        String timestamp = bean.getRegistrationTimestamp();
+
+        log.info("Request: ID:" + bean.getUserId() + "\nCredit: " + bean.getUserCredit() + "\nTimestamp: " + timestamp);
+        log.info("Result: ID" + userId + "\nCredit: " + userCredit);
+
+        Transaction txn = datastoreService.beginTransaction();
+
+        if(userId.equalsIgnoreCase(bean.getUserId())) {
+            if(userCredit.equalsIgnoreCase(bean.getUserCredit())) {
+                try {
+                    Entity entity = new Entity(Constants.ENTITY_NAME_EVENT);
+                    entity.setProperty(Constants.PROPERTY_MACHINE_ID, "null");
+                    entity.setProperty(Constants.PROPERTY_USER_ID, userId);
+                    entity.setProperty(Constants.PROPERTY_EVENT_TYPE, "check_data");
+                    entity.setProperty(Constants.PROPERTY_TIMESTAMP, bean.getRegistrationTimestamp());
+                    entity.setProperty(Constants.PROPERTY_CONFIRMED, "true");
+                    datastoreService.put(entity);
+                    txn.commit();
+                } finally {
+                    if (txn.isActive()) {
+                        txn.rollback();
+                    }
+                }
+                return new ResponseBean(true);
+            } else {
+                try {
+                    Entity entity = new Entity(Constants.ENTITY_NAME_EVENT);
+                    entity.setProperty(Constants.PROPERTY_MACHINE_ID, "null");
+                    entity.setProperty(Constants.PROPERTY_USER_ID, userId);
+                    entity.setProperty(Constants.PROPERTY_EVENT_TYPE, "check_data");
+                    entity.setProperty(Constants.PROPERTY_TIMESTAMP, bean.getRegistrationTimestamp());
+                    entity.setProperty(Constants.PROPERTY_CONFIRMED, "false");
+                    datastoreService.put(entity);
+                    txn.commit();
+                } finally {
+                    if (txn.isActive()) {
+                        txn.rollback();
+                    }
+                }
+                return new ResponseBean(false);
+            }
+        } else {
+            try {
+                Entity entity = new Entity(Constants.ENTITY_NAME_EVENT);
+                entity.setProperty(Constants.PROPERTY_MACHINE_ID, "null");
+                entity.setProperty(Constants.PROPERTY_USER_ID, userId);
+                entity.setProperty(Constants.PROPERTY_EVENT_TYPE, "check_data");
+                entity.setProperty(Constants.PROPERTY_TIMESTAMP, bean.getRegistrationTimestamp());
+                entity.setProperty(Constants.PROPERTY_CONFIRMED, "false");
+                datastoreService.put(entity);
+                txn.commit();
+            } finally {
+                if (txn.isActive()) {
+                    txn.rollback();
+                }
+            }
+            return new ResponseBean(false);
+        }
+    }
+
     @ApiMethod(name = "getTodayKey", httpMethod = ApiMethod.HttpMethod.GET, scopes = {Constants.EMAIL_SCOPE},
                 clientIds = {Constants.WEB_CLIENT_ID,
                             Constants.ANDROID_ID,
@@ -260,7 +329,7 @@ public class MyEndpoint {
         } else {
 
             user.setUserId((String) oldUser.getProperty(Constants.PROPERTY_USER_ID));
-            user.setUserCredit((String) oldUser.getProperty(Constants.PROPERTY_USER_CREDIT));
+            user.setUserCredit(oldUser.getProperty(Constants.PROPERTY_USER_CREDIT).toString());
 
             return user;
         }

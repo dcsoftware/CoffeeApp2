@@ -88,6 +88,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                     }
                     break;
                 case 2:
+                    Toast.makeText(getApplicationContext(), "Updating Credit", Toast.LENGTH_SHORT).show();
                     updateUserData();
                     Log.d("MAIN ACTIVITY", "Update credit");
                     break;
@@ -212,14 +213,13 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         connManager = (ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
 
         netInfo = connManager.getActiveNetworkInfo();
-        NetworkInfo.DetailedState state = netInfo.getDetailedState();
 
         onLineMode = netInfo != null && netInfo.isConnected();
     }
 
     public void updateUserData() {
         SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
-
+        Toast.makeText(getApplicationContext(), "updating new credit.", Toast.LENGTH_SHORT).show();
         userId = userSharedPref.getString(Constants.USER_ID, "null");
         userCredit = userSharedPref.getString(Constants.USER_CREDIT, "null");
         //userIdText.setText(userId);

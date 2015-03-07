@@ -27,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
+import it.blqlabs.android.coffeeapp2.database.TransactionEntity;
 import it.blqlabs.android.coffeeapp2.database.TransactionsDBOpenHelper;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginRequestBean;
@@ -56,6 +57,11 @@ public class OffLineComService extends Service {
     private static final byte[] RESULT_DATA_UPDATED = {(byte) 0x55, (byte) 0x66};
     private static final byte[] RESULT_PRIV_APP_SELECTED = {(byte) 0x66, (byte) 0x77};
     private static final byte[] RESULT_AUTH_ERROR = {(byte) 0xB1, (byte) 0xB2};
+
+    private static final int MESSENGER_PROGRESS_BAR = 1;
+    private static final int MESSENGER_UPDATE_DATA = 2;
+    private static final int START_PROGRESS = 1;
+    private static final int STOP_PROGRESS = 0;
 
 
     private Looper mServiceLooper;
@@ -107,7 +113,7 @@ public class OffLineComService extends Service {
             userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
             userId = cardSetting.getString(Constants.USER_ID, "");
 
-            //db = new TransactionsDBOpenHelper(context).getWritableDatabase();
+            db = new TransactionsDBOpenHelper(context).getWritableDatabase();
 
             isoDep = IsoDep.get(MainActivity.getTag());
             cardState = Constants.State.DISCONNECTED;
@@ -119,7 +125,7 @@ public class OffLineComService extends Service {
                     isoDep.setTimeout(20000);
                     isoDep.connect();
                     cardState = Constants.State.CONNECTED;
-                    messenger.send(Message.obtain(null, cardState.ordinal(), cardState));
+                    //messenger.send(Message.obtain(null, cardState.ordinal(), cardState));
 
                     while(isoDep.isConnected()) {
                         switch(cardState) {
@@ -135,13 +141,12 @@ public class OffLineComService extends Service {
                                     Log.d("TAG", "result = " + new String(result));
                                     if (Arrays.equals(RESULT_PRIV_APP_SELECTED, statusWord)) {
 //                                        payload = Arrays.copyOfRange(result, 2, 9);
-//                                        machineId = new String(Arrays.copyOfRange(result, 2, 10));
+                                        machineId = new String(Arrays.copyOfRange(result, 2, 10));
 //                                        secret = new String(Arrays.copyOfRange(result, 11, result.length));
 
                                         //new LoginRequestAsyncTask().execute();
                                         cardState = Constants.State.APP_SELECTED;
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Machine ID: " + machineId + ", Secret: " + secret));
-                                        Log.d("TAG", "machineId = " + machineId + ", machineName = " + secret);
+                                        Log.d("TAG", "machineId = " + machineId);
 
                                     }
                                 } catch (IOException e) {
@@ -178,20 +183,18 @@ public class OffLineComService extends Service {
 
                                 byte[] pwByte = pw.getBytes();
 
-                                messenger.send(Message.obtain(null, cardState.ordinal(), "OTP Authorization, code: " + pw));
-                                messenger.send(Message.obtain(null, cardState.ordinal(), "Hex Code: " + ByteArrayToHexString(pwByte)));
-
                                 command = BuildApduCommand(APDU_AUTHENTICATE, APDU_P1_GENERAL, APDU_P2_GENERAL, ByteArrayToHexString(pwByte), APDU_LE);
                                 try {
                                     result = isoDep.transceive(command);
                                     statusWord = new byte[]{result[0], result[1]};
 
                                     if (Arrays.equals(RESULT_AUTH_ERROR, statusWord)) {
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Authentication error!!"));
+                                        //messenger.send(Message.obtain(null, cardState.ordinal(), "Authentication error!!"));
                                         Thread.sleep(2000);
+                                        cardState = Constants.State.APP_SELECTED;
                                     } else if (Arrays.equals(RESULT_OK, statusWord)) {
                                         cardState = Constants.State.AUTHENTICATED;
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Authenticated!!"));
+                                        //messenger.send(Message.obtain(null, cardState.ordinal(), "Authenticated!!"));
                                     }
                                 } catch (IOException e) {
                                     Log.d("TAG", "app selection failed");
@@ -203,7 +206,7 @@ public class OffLineComService extends Service {
                                 Log.d("TAG", "SENDING USER INFORMATION");
 
                                 newCredit = Float.valueOf(userCredit);
-                                messenger.send(Message.obtain(null, cardState.ordinal(), "Logging in... " + newCredit));
+                                //messenger.send(Message.obtain(null, cardState.ordinal(), "Logging in... " + newCredit));
 
                                 data = (userId + "," + userCredit + ";").getBytes();
 
@@ -214,7 +217,7 @@ public class OffLineComService extends Service {
 
                                     if (Arrays.equals(RESULT_OK, statusWord)) {
                                         cardState = Constants.State.READING_STATUS;
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "Logged In..."));
+                                        //messenger.send(Message.obtain(null, cardState.ordinal(), "Logged In..."));
                                     }
                                 } catch (IOException e) {
                                     Log.d("TAG", "autentication failed");
@@ -241,12 +244,19 @@ public class OffLineComService extends Service {
                                         cardState = Constants.State.READING_STATUS;
                                         messenger.send(Message.obtain(null, cardState.ordinal(), "Status: WAITING!"));
                                     } else if (Arrays.equals(RESULT_STATUS_RECHARGED, statusWord)) {
-                                        //payload = Arrays.copyOfRange(result, 2, result.length);
                                         timestamp = Arrays.copyOfRange(result, 8, 18);
                                         float rechargeValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                        transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "RECHARGED!! " + " " + new String(timestamp) + "id: " + transactionNumber));
+                                        transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
+                                        //messenger.send(Message.obtain(null, cardState.ordinal(), "RECHARGED!! " + " " + new String(timestamp) + "id: " + transactionNumber));
                                         newCredit += rechargeValue;
+                                        Log.d("READING STATUS", "RECHARGED: " + rechargeValue + ", id=" + transactionNumber);
+                                        StoreRequestBean storeRequest = new StoreRequestBean();
+                                        storeRequest.setMachineId(machineId);
+                                        storeRequest.setUserId(userId);
+                                        storeRequest.setAmount("+" + String.valueOf(rechargeValue));
+                                        storeRequest.setTimestamp(new String(timestamp));
+                                        storeRequest.setTransactionId(transactionNumber);
+                                        new StoreAsyncTask().execute(storeRequest);
                                         /*TransactionEntity transactionEntity = new TransactionEntity();
                                         transactionEntity.setTransactionNumber(transactionNumber);
                                         transactionEntity.setMachineId(machineId);
@@ -257,12 +267,18 @@ public class OffLineComService extends Service {
                                         new StoreTransactionAsyncTask().execute(new Pair<Context, TransactionEntity>(context, transactionEntity));*/
                                         cardState = Constants.State.DATA_UPDATED;
                                     } else if (Arrays.equals(RESULT_STATUS_PURCHASE, statusWord)) {
-                                        //payload = Arrays.copyOfRange(result, 2, result.length);
                                         timestamp = Arrays.copyOfRange(result, 8, 18);
                                         float purchaseValue = Float.valueOf(new String(Arrays.copyOfRange(result, 2, 7)));
-                                        transactionNumber = new String(Arrays.copyOfRange(result, 18, result.length));
-                                        messenger.send(Message.obtain(null, cardState.ordinal(), "PURCHASE! " + " " + new String(timestamp) + "id: " + transactionNumber));
+                                        transactionNumber = new String(Arrays.copyOfRange(result, 21, 29));
+                                        //messenger.send(Message.obtain(null, cardState.ordinal(), "PURCHASE! " + " " + new String(timestamp) + "id: " + transactionNumber));
                                         newCredit -= purchaseValue;
+                                        StoreRequestBean storeRequest = new StoreRequestBean();
+                                        storeRequest.setMachineId(machineId);
+                                        storeRequest.setUserId(userId);
+                                        storeRequest.setAmount("-" + String.valueOf(purchaseValue));
+                                        storeRequest.setTimestamp(new String(timestamp));
+                                        storeRequest.setTransactionId(transactionNumber);
+                                        new StoreAsyncTask().execute(storeRequest);
                                         /*TransactionEntity transactionEntity = new TransactionEntity();
                                         transactionEntity.setTransactionNumber(transactionNumber);
                                         transactionEntity.setMachineId(machineId);
@@ -278,27 +294,15 @@ public class OffLineComService extends Service {
                                 }
                                 break;
                             case DATA_UPDATED:
-                                Thread.sleep(500);
-
+                                Thread.sleep(100);
                                 Log.d("TAG", "UPDATING USER INFORMATION");
-
-                                messenger.send(Message.obtain(null, cardState.ordinal(), "Credit update: " + newCredit));
                                 newCredit = (float)Math.round(newCredit * 100) / 100;
                                 settingEditor.putString(Constants.USER_CREDIT, String.valueOf(newCredit));
                                 settingEditor.commit();
                                 userCredit = cardSetting.getString(Constants.USER_CREDIT, "");
-
+                                Log.d("COM SERVICE", "User credit updated: " + userCredit);
+                                messenger.send(Message.obtain(null, MESSENGER_UPDATE_DATA, 1));
                                 cardState = Constants.State.AUTHENTICATED;
-                                /*data = cardSetting.getString(Constants.USER_CREDIT, "").getBytes();
-
-                                command = BuildApduCommand(APDU_UPDATE_CREDIT, APDU_P1_GENERAL, APDU_P1_GENERAL, ByteArrayToHexString(data), APDU_LE);
-                                result = isoDep.transceive(command);
-
-                                statusWord = new byte[]{result[0], result[1]};
-
-                                if (Arrays.equals(RESULT_DATA_UPDATED, statusWord)) {
-                                    cardState = Constants.State.READING_STATUS;
-                                }*/
                                 break;
 
                         }
@@ -347,6 +351,50 @@ public class OffLineComService extends Service {
                         + Character.digit(s.charAt(i+1), 16));
             }
             return data;
+        }
+    }
+    public class StoreAsyncTask extends AsyncTask<StoreRequestBean, Void, StoreResponseBean> {
+
+        private MyApi myApiService;
+        private StoreRequestBean request;
+
+        @Override
+        protected StoreResponseBean doInBackground(StoreRequestBean... params) {
+            request = params[0];
+            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
+            myApiService = builder.build();
+
+            StoreResponseBean response = new StoreResponseBean();
+
+            try {
+                response = myApiService.storeClientTransaction(params[0]).execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return response;
+        }
+
+        @Override
+        protected void onPostExecute(StoreResponseBean bean) {
+            if (bean.size() != 0) {
+                if (bean.getConfirmed()) {
+                    //update @newcredit con l'amuont ricevuto e settare cardstate in DATA_UPDATED
+                    Toast.makeText(getApplicationContext(), "STORED", Toast.LENGTH_SHORT).show();
+
+                    Log.d("STORE TASK", "Confirmed:" + bean.getConfirmed() + "\nCredit:" + newCredit);
+                    request.setConfirmed(true);
+                    cupboard().withDatabase(db).put(new TransactionEntity(request));
+                } else {
+                    Toast.makeText(getApplicationContext(), "STORE NOT OK", Toast.LENGTH_SHORT).show();
+                    Log.d("STORE TASK", "Not Confirmed:\nCredit:" + newCredit);
+                    request.setConfirmed(false);
+                    cupboard().withDatabase(db).put(new TransactionEntity(request));
+                }
+            } else {
+                Log.d("STORE TASK", "Connection Error");
+            }
+            //mAccountCallback.get().updateProgressBar(false);
         }
     }
 

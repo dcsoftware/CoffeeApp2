@@ -138,7 +138,7 @@ public class MyEndpoint {
 
         try{
 
-            userEntity.setProperty(Constants.PROPERTY_USER_CREDIT, userCredit);
+            userEntity.setProperty(Constants.PROPERTY_USER_CREDIT, String.valueOf(userCredit));
             datastoreService.put(userEntity);
 
             Entity transaction = new Entity(Constants.ENTITY_NAME_CLIENT_TRANSACTION);

@@ -91,7 +91,7 @@ public class OffLineComService extends Service {
 
     private SQLiteDatabase db;
 
-    private String secret = "ABCDEFGHIJ";
+    private String secret;// = "ABCDEFGHIJ";
 
     private OtpGenerator mOtpGenerator;
 
@@ -103,7 +103,7 @@ public class OffLineComService extends Service {
         public void handleMessage(Message msg) {
             Context context = MainActivity.getContext();
             prefs = context.getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
-            //secret = prefs.getString(Constants.PREF_SECRET_KEY, null);
+            secret = prefs.getString(Constants.PREF_SECRET_KEY, null);
 
             mOtpGenerator = new OtpGenerator(secret);
             cardSetting = context.getSharedPreferences(Constants.USER_SHARED_PREF, Context.MODE_PRIVATE);

@@ -31,8 +31,12 @@ import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 import it.blqlabs.android.coffeeapp2.OtpGenerator.Clock;
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
+import it.blqlabs.android.coffeeapp2.backend.GetSecureKeyAsyncTask;
 import it.blqlabs.android.coffeeapp2.database.TransactionsDBOpenHelper;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
 import it.blqlabs.appengine.coffeeappbackend.myApi.model.LoginRequestBean;
@@ -58,6 +62,10 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     private CardView cardStatus;
     private CardView cardCredit;
+
+    Calendar c = Calendar.getInstance();
+    SimpleDateFormat format = new SimpleDateFormat("ddMMyyyy");
+
 
 
     public Messenger mMessenger = new Messenger(new MessageHandler(this));
@@ -206,7 +214,20 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         isFirstRun();
 
         handleIntent(getIntent());
+        getSecureKey();
+    }
 
+    public void getSecureKey() {
+
+        String storedDate = mSharedPref.getString(Constants.PREF_KEY_DATE, "00000000");
+        String currentDate = format.format(c.getTime());
+
+        if(!storedDate.equals(currentDate)) {
+            Toast.makeText(this, "GETTING KEY", Toast.LENGTH_SHORT).show();
+            new GetSecureKeyAsyncTask().execute(this);
+        } else {
+            Toast.makeText(this, "KEY already stored:" + mSharedPref.getString(Constants.PREF_SECRET_KEY, "00000000"), Toast.LENGTH_SHORT).show();
+        }
     }
 
     public void checkConnection() {

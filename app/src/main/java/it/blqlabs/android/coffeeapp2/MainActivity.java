@@ -1,6 +1,7 @@
 package it.blqlabs.android.coffeeapp2;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -33,6 +34,7 @@ import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.TimeZone;
 
 import it.blqlabs.android.coffeeapp2.OtpGenerator.Clock;
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
@@ -62,6 +64,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
     private CardView cardStatus;
     private CardView cardCredit;
+
+    private PendingIntent alarmIntent;
 
     Calendar c = Calendar.getInstance();
     SimpleDateFormat format = new SimpleDateFormat("ddMMyyyy");
@@ -123,6 +127,9 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
 
         }
+
+        Intent intent = new Intent(MainActivity.this, UpdateAlarmReceiver.class);
+        alarmIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
         mSharedPref = getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
 
 
@@ -214,12 +221,24 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         isFirstRun();
 
         handleIntent(getIntent());
-        getSecureKey();
+        //getSecureKey();
+    }
+
+    public void setUpdateAlarm() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 1);
+
+        alarmManager.setInexactRepeating(AlarmManager.RTC, calendar.getTimeInMillis(), AlarmManager.INTERVAL_HOUR, alarmIntent);
     }
 
     public void getSecureKey() {
 
         String storedDate = mSharedPref.getString(Constants.PREF_KEY_DATE, "00000000");
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
         String currentDate = format.format(c.getTime());
 
         if(!storedDate.equals(currentDate)) {
@@ -278,6 +297,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                             mPrefEditor.commit();
                             Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
                             updateUserData();
+                            getSecureKey();
                             break;
                         case 101:
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, true);
@@ -323,7 +343,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             checkConnection();
             if(onLineMode){
                 Toast.makeText(this, "ON LINE MODE", Toast.LENGTH_SHORT).show();
-                new CheckUserDataTask().execute(bean);
+                //new CheckUserDataTask().execute(bean);
+                getSecureKey();
             } else {
                 Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
                 itemProgress.collapseActionView();

@@ -25,10 +25,20 @@ public class GetSecureKeyAsyncTask extends AsyncTask<Context, Void, KeyBean> {
     private Context context;
     private GoogleAccountCredential credential;
 
+    @Override
+    protected void onPreExecute() {
+
+        //cancel(true);
+    }
 
     @Override
     protected KeyBean doInBackground(Context... params) {
         //credential = MainActivity.getCredential();
+
+//        if(!isCancelled()) {
+//            //fai quello che devi fare
+//        }
+
         MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), credential);
         myApiService = builder.build();
         context = params[0];
@@ -46,14 +56,25 @@ public class GetSecureKeyAsyncTask extends AsyncTask<Context, Void, KeyBean> {
     }
 
     @Override
+    protected void onCancelled(KeyBean result) {
+
+    }
+
+    @Override
     protected void onPostExecute(KeyBean result) {
-        SharedPreferences prefs = context.getSharedPreferences(Constants.M_SHARED_PREF, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
+        if(result.size() != 0) {
+            SharedPreferences prefs = context.getSharedPreferences(Constants.M_SHARED_PREF, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
 
-        editor.putString(Constants.PREF_KEY_DATE, result.getDate());
-        editor.putString(Constants.PREF_SECRET_KEY, result.getKey());
-        editor.commit();
+            editor.putString(Constants.PREF_KEY_DATE, result.getDate());
+            editor.putString(Constants.PREF_SECRET_KEY, result.getKey());
+            editor.commit();
 
-        Toast.makeText(context, "KEY: " + result.getKey(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "KEY: " + result.getKey(), Toast.LENGTH_SHORT).show();
+            //TODO set alarm to fire at 00:01 of the next day
+        } else {
+            Toast.makeText(context, "Error downloading Key", Toast.LENGTH_SHORT).show();
+            //TODO set alarm to fire again in 10 seconds
+        }
     }
 }

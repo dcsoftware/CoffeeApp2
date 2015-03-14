@@ -22,6 +22,5 @@ public class BootReceiver extends BroadcastReceiver {
 //            manager.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), AlarmManager.INTERVAL_DAY, pendingIntent);
 
         }
-            throw new UnsupportedOperationException("Not yet implemented");
     }
 }

@@ -15,6 +15,7 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.SystemClock;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
@@ -235,6 +236,18 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         alarmManager.setInexactRepeating(AlarmManager.RTC, calendar.getTimeInMillis(), AlarmManager.INTERVAL_HOUR, alarmIntent);
     }
 
+    public void set30SecAlarm() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 1);
+
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 15*1000, alarmIntent);
+
+    }
+
     public void getSecureKey() {
 
         String storedDate = mSharedPref.getString(Constants.PREF_KEY_DATE, "00000000");
@@ -298,6 +311,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                             Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
                             updateUserData();
                             getSecureKey();
+                            //set30SecAlarm();
                             break;
                         case 101:
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, true);
@@ -344,7 +358,8 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             if(onLineMode){
                 Toast.makeText(this, "ON LINE MODE", Toast.LENGTH_SHORT).show();
                 //new CheckUserDataTask().execute(bean);
-                getSecureKey();
+                //getSecureKey();
+                new GetSecureKeyAsyncTask().execute(this);
             } else {
                 Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
                 itemProgress.collapseActionView();

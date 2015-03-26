@@ -103,7 +103,6 @@ public class GetSecureKeyAsyncTask extends AsyncTask<Context, Void, KeyBean> {
                 calendar.setTimeInMillis(System.currentTimeMillis());
                 calendar.set(Calendar.HOUR_OF_DAY, 0);
                 calendar.set(Calendar.MINUTE, 1);
-                calendar.set(Calendar.SECOND, 0);
 
                 alarmManager.setInexactRepeating(AlarmManager.RTC, calendar.getTimeInMillis(), AlarmManager.INTERVAL_HOUR, alarmIntent);
                 //TODO set alarm to fire at 00:01 of the next day

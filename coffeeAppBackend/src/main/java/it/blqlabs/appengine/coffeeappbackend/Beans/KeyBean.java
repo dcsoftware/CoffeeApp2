@@ -1,13 +1,21 @@
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Beans;
 
 /**
  * Created by davide on 28/10/14.
  */
+
+import com.googlecode.objectify.annotation.Entity;
+import com.googlecode.objectify.annotation.Id;
+
+@Entity
 public class KeyBean {
 
+    @Id
     private int id;
     private String key;
     private String date;
+
+    public KeyBean() {}
 
     public String getDate() {
         return date;

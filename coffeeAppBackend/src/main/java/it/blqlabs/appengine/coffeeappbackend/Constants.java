@@ -40,4 +40,5 @@ public class Constants {
     public static final String ANDROID_ID = "824332171015-dnnfuu28nvcud4rs9pjome3a6n50sv5o.apps.googleusercontent.com";
     public static final String ANDROID_AUDIENCE = WEB_CLIENT_ID;
     public static final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
+    public static final String GCM_SENDER_ID = "824332171015";
 }

@@ -1,4 +1,4 @@
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Beans;
 
 /**
  * The object model for the data we are sending through endpoints

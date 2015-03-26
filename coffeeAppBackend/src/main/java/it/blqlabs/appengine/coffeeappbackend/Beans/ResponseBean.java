@@ -1,27 +1,18 @@
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Beans;
 
 /**
- * Created by davide on 29/01/15.
+ * Created by davide on 28/10/14.
  */
-public class StoreResponseBean {
+public class ResponseBean {
 
     private String transactionId;
-    private String amount;
     private boolean confirmed;
 
-    public StoreResponseBean() {
+    public ResponseBean() {
 
     }
 
-    public String getAmount() {
-        return amount;
-    }
-
-    public void setAmount(String amount) {
-        this.amount = amount;
-    }
-
-    public StoreResponseBean(boolean confirmed) {
+    public ResponseBean(boolean confirmed) {
         this.confirmed = confirmed;
     }
 
@@ -44,7 +35,5 @@ public class StoreResponseBean {
     public String toString() {
         return "transactionId=" + transactionId + ",confirmed=" + confirmed;
     }
-
-
 
 }

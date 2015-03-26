@@ -1,4 +1,4 @@
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Beans;
 
 /**
  * Created by davide on 28/10/14.

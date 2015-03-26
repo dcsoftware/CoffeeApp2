@@ -1,4 +1,4 @@
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Arduino;
 
 import java.io.IOException;
 import javax.servlet.http.HttpServlet;

@@ -12,7 +12,7 @@
         <option name="HTTP_PORT" value="8080" />
         <option name="WAR_DIR" value="$MODULE_DIR$/build/exploded-app" />
         <option name="WEB_APP_DIR" value="$MODULE_DIR$/src/main/webapp" />
-        <option name="APPENGINE_SDKROOT" value="$USER_HOME$/.gradle/appengine-sdk/appengine-java-sdk-1.9.14" />
+        <option name="APPENGINE_SDKROOT" value="$USER_HOME$/.gradle/appengine-sdk/appengine-java-sdk-1.9.18" />
       </configuration>
     </facet>
     <facet type="java-gradle" name="Java-Gradle">
@@ -22,7 +22,7 @@
       </configuration>
     </facet>
   </component>
-  <component name="NewModuleRootManager" inherit-compiler-output="true">
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
     <output url="file://$MODULE_DIR$/build/classes/main" />
     <output-test url="file://$MODULE_DIR$/build/classes/test" />
     <exclude-output />
@@ -40,10 +40,14 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" exported="" name="appengine-endpoints-1.9.14" level="project" />
-    <orderEntry type="library" exported="" name="appengine-endpoints-deps-1.9.14" level="project" />
+    <orderEntry type="library" exported="" name="appengine-endpoints-1.9.18" level="project" />
+    <orderEntry type="library" exported="" name="appengine-endpoints-deps-1.9.18" level="project" />
     <orderEntry type="library" exported="" name="servlet-api-2.5" level="project" />
-    <orderEntry type="library" exported="" name="gson-2.3" level="project" />
-    <orderEntry type="library" exported="" name="appengine-api-1.0-sdk-1.9.14" level="project" />
+    <orderEntry type="library" exported="" name="gson-2.3.1" level="project" />
+    <orderEntry type="library" exported="" name="objectify-5.1.5" level="project" />
+    <orderEntry type="library" exported="" name="gcm-server-1.0.2" level="project" />
+    <orderEntry type="library" exported="" name="appengine-api-1.0-sdk-1.9.18" level="project" />
+    <orderEntry type="library" exported="" name="guava-18.0" level="project" />
+    <orderEntry type="library" exported="" name="json-simple-1.1" level="project" />
   </component>
 </module>

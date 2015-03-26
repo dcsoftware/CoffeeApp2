@@ -28,6 +28,13 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import it.blqlabs.appengine.coffeeappbackend.Beans.KeyBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.LoginRequestBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.LoginResponseBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.ResponseBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.StoreRequestBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.StoreResponseBean;
+import it.blqlabs.appengine.coffeeappbackend.Beans.UserBean;
 import it.blqlabs.appengine.coffeeappbackend.OTPGenerator.OtpGenerator;
 
 /**

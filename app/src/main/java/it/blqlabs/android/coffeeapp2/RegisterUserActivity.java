@@ -124,13 +124,7 @@ public class RegisterUserActivity extends ActionBarActivity {
 
         @Override
         protected UserBean doInBackground(UserBean... params) {
-            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), new HttpRequestInitializer() {
-                @Override
-                public void initialize(HttpRequest httpRequest) throws IOException {
-                    httpRequest.setConnectTimeout(20000);
-                    httpRequest.setReadTimeout(10000);
-                }
-            });
+            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
             myApiService = builder.build();
 
             UserBean responseUser = new UserBean();
@@ -161,6 +155,7 @@ public class RegisterUserActivity extends ActionBarActivity {
                 okButton.setEnabled(true);
             } else {
                 registerButton.setEnabled(true);
+                setAccountName(null);
             }
 
             //updateUserData();

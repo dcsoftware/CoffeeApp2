@@ -39,6 +39,7 @@ import java.util.TimeZone;
 
 import it.blqlabs.android.coffeeapp2.OtpGenerator.Clock;
 import it.blqlabs.android.coffeeapp2.OtpGenerator.OtpGenerator;
+import it.blqlabs.android.coffeeapp2.backend.GcmRegistrationAsyncTask;
 import it.blqlabs.android.coffeeapp2.backend.GetSecureKeyAsyncTask;
 import it.blqlabs.android.coffeeapp2.database.TransactionsDBOpenHelper;
 import it.blqlabs.appengine.coffeeappbackend.myApi.MyApi;
@@ -309,8 +310,9 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, false);
                             mPrefEditor.commit();
                             Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
+                            new GcmRegistrationAsyncTask(this).execute();
                             updateUserData();
-                            getSecureKey();
+                            //getSecureKey();
                             //set30SecAlarm();
                             break;
                         case 101:

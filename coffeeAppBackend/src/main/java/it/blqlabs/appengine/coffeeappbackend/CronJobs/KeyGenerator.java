@@ -31,7 +31,7 @@ public class KeyGenerator extends HttpServlet{
         Transaction txn = datastoreService.beginTransaction();
 
         Calendar c = Calendar.getInstance();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("ddMMyyyy");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
 
 
         try{

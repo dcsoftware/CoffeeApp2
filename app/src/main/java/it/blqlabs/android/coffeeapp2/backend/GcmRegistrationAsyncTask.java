@@ -1,7 +1,9 @@
 package it.blqlabs.android.coffeeapp2.backend;
 
+import android.app.NotificationManager;
 import android.content.Context;
 import android.os.AsyncTask;
+import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -13,6 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import it.blqlabs.android.coffeeapp2.Constants;
+import it.blqlabs.android.coffeeapp2.R;
 import it.blqlabs.appengine.coffeeappbackend.registration.Registration;
 
 /**
@@ -23,6 +26,8 @@ public class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
     private static Registration regService = null;
     private GoogleCloudMessaging gcm;
     private Context context;
+    private NotificationCompat.Builder notifBuilder;
+    private NotificationManager notifMgr;
 
     public GcmRegistrationAsyncTask(Context context) {
         this.context = context;
@@ -30,6 +35,8 @@ public class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
 
     @Override
     protected String doInBackground(Void... params) {
+        notifBuilder = new NotificationCompat.Builder(context).setSmallIcon(R.drawable.ic_launcher).setContentTitle("Coffee App");
+        notifMgr = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (regService == null) {
             Registration.Builder builder = new Registration.Builder(AndroidHttp.newCompatibleTransport(),
                     new AndroidJsonFactory(), null);
@@ -61,7 +68,10 @@ public class GcmRegistrationAsyncTask extends AsyncTask<Void, Void, String> {
 
     @Override
     protected void onPostExecute(String msg) {
-        Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
+        notifBuilder.setContentText(msg);
+        notifMgr.notify(1, notifBuilder.build());
+
+        //Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
         Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
     }
 }

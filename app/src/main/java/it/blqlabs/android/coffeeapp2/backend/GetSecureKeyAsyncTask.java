@@ -35,7 +35,7 @@ public class GetSecureKeyAsyncTask extends AsyncTask<Context, Void, KeyBean> {
     private SharedPreferences mSharedPref;
     private NotificationCompat.Builder notifBuilder;
     private NotificationManager notifMgr;
-    private SimpleDateFormat format = new SimpleDateFormat("ddMMyyyy");
+    private SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd");
     private Calendar c;
     private PendingIntent alarmIntent;
 

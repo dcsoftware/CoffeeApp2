@@ -1,10 +1,13 @@
 package it.blqlabs.android.coffeeapp2;
 
 import android.app.IntentService;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -18,12 +21,17 @@ import java.util.logging.Logger;
  */
 public class GcmIntentService extends IntentService {
 
+    private NotificationCompat.Builder notifBuilder;
+    private NotificationManager notifMgr;
+
     public GcmIntentService() {
         super("GcmIntentService");
     }
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        notifBuilder = new NotificationCompat.Builder(getApplicationContext()).setSmallIcon(R.drawable.ic_launcher).setContentTitle("Coffee App");
+        notifMgr = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Bundle extras = intent.getExtras();
         GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance(this);
         Log.d("GcmIntentService", "messaggio ricevuto");
@@ -35,6 +43,13 @@ public class GcmIntentService extends IntentService {
             // Since we're not using two way messaging, this is all we really to check for
             if (GoogleCloudMessaging.MESSAGE_TYPE_MESSAGE.equals(messageType)) {
                 Logger.getLogger("GCM_RECEIVED").log(Level.INFO, extras.toString());
+
+                String key = extras.getString("key");
+                String date = extras.getString("date");
+
+                notifBuilder.setContentText("New key received:\nkey = " + key + "\ndate = " + date);
+                notifMgr.notify(1, notifBuilder.build());
+
 
                 showToast(extras.getString("message"));
             }

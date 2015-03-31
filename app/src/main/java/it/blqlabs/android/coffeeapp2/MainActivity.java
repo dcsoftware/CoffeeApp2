@@ -155,69 +155,6 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
         final OtpGenerator otpG = new OtpGenerator("ABCDEFGHIJ");
 
-        /*button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                long otp = 0;
-                try {
-                    otp = otpG.getCode1();
-                } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-                    e.printStackTrace();
-                }
-
-                LoginRequestBean request = new LoginRequestBean();
-                request.setOtpPassword(otp);
-                request.setMachineId("00005678");
-                request.setUserId(userId);
-                request.setTimestamp(otpG.getTimestamp());
-
-                logText.append("OTP: " + otp + ", Timestamp: " + otpG.getTimestamp());
-                new LoginAsyncTask().execute(request);
-            }
-        });
-
-        purchaseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                TransactionBean request = new TransactionBean();
-                request.setMachineId("00005678");
-                request.setUserId(userId);
-                request.setAmount("-0.55");
-                request.setTimestamp(String.valueOf(otpG.getTimestamp()));
-
-                new StoreAsyncTask().execute(request);
-            }
-        });
-
-        rechargeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                TransactionBean request = new TransactionBean();
-                request.setMachineId("00005678");
-                request.setUserId(userId);
-                request.setAmount("+2.00");
-                request.setTimestamp(String.valueOf(otpG.getTimestamp()));
-
-                new StoreAsyncTask().execute(request);
-            }
-        });
-
-        newUserButton.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                UserBean user = new UserBean();
-                user.setUserEmail("ciaociao" + new Random().nextInt());
-                user.setRegistrationTimestamp(String.valueOf(otpG.getTimestamp()));
-
-                new RegisterTask().execute(user);
-                newUserButton.setClickable(false);
-
-            }
-        });
-        newUserButton.setClickable(false);*/
-
         isFirstRun();
 
         handleIntent(getIntent());
@@ -259,15 +196,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             Toast.makeText(this, "FIRST RUN", Toast.LENGTH_SHORT).show();
             Intent i = new Intent(MainActivity.this, RegisterUserActivity.class);
             startActivityForResult(i, 100);
-            //newUserButton.setClickable(true);
 
-            /*SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
-            SharedPreferences.Editor userPrefEditor = userSharedPref.edit();
-            userPrefEditor.putString(Constants.USER_NAME, "Davide");
-            userPrefEditor.putString(Constants.USER_SURNAME, "Corradini");
-            userPrefEditor.putString(Constants.USER_CREDIT, "0");
-            userPrefEditor.putString(Constants.USER_ID, "123456789");
-            userPrefEditor.commit();*/
         } else {
             updateUserData();
         }
@@ -284,10 +213,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, false);
                             mPrefEditor.commit();
                             Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
-                            //new GcmRegistrationAsyncTask(this).execute();
                             updateUserData();
-                            //getSecureKey();
-                            //set30SecAlarm();
                             break;
                         case 101:
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, true);
@@ -334,7 +260,6 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
             if(onLineMode){
                 Toast.makeText(this, "ON LINE MODE", Toast.LENGTH_SHORT).show();
                 //new CheckUserDataTask().execute(bean);
-                //getSecureKey();
                 new GetSecureKeyAsyncTask().execute(this);
             } else {
                 Toast.makeText(this, "OFF LINE MODE", Toast.LENGTH_SHORT).show();
@@ -470,115 +395,6 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                 Toast.makeText(MainActivity.this, "DATA NULL", Toast.LENGTH_SHORT).show();
 
             }
-        }
-    }
-
-    public class LoginAsyncTask extends AsyncTask<LoginRequestBean, Void, LoginResponseBean> {
-
-        private MyApi myApiService;
-
-        @Override
-        protected void onPreExecute() {
-            progressBar.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected LoginResponseBean doInBackground(LoginRequestBean... params) {
-            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
-            myApiService = builder.build();
-
-            LoginResponseBean response = new LoginResponseBean();
-
-            try {
-                response = myApiService.login(params[0]).execute();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return response;
-        }
-
-        @Override
-        protected void onPostExecute(LoginResponseBean bean) {
-            logText.append("Login request: " + String.valueOf(bean.getLogged() + "\nControlKey:" + bean.getControlKey()));
-
-            progressBar.setVisibility(View.INVISIBLE);
-        }
-    }
-
-    public class StoreAsyncTask extends AsyncTask<TransactionBean, Void, ResponseBean> {
-
-        private MyApi myApiService;
-
-        @Override
-        protected void onPreExecute() {
-            progressBar.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected ResponseBean doInBackground(TransactionBean... params) {
-            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
-            myApiService = builder.build();
-
-            ResponseBean response = new ResponseBean();
-
-            /*try {
-                response = myApiService.storeClientTransaction(params[0]).execute();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }*/
-
-            return response;
-        }
-
-        @Override
-        protected void onPostExecute(ResponseBean bean) {
-            progressBar.setVisibility(View.INVISIBLE);
-        }
-    }
-
-    public class RegisterTask extends AsyncTask<UserBean, Void, UserBean> {
-
-        private MyApi myApiService;
-
-        @Override
-        protected void onPreExecute() {
-            progressBar.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected UserBean doInBackground(UserBean... params) {
-            MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport(), new AndroidJsonFactory(), null);
-            myApiService = builder.build();
-
-            UserBean responseUser = new UserBean();
-
-            try {
-                responseUser = myApiService.registerNewUser(params[0]).execute();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return responseUser;
-        }
-
-        @Override
-        protected void onPostExecute(UserBean bean) {
-            SharedPreferences userSharedPref = getSharedPreferences(Constants.USER_SHARED_PREF, MODE_PRIVATE);
-            SharedPreferences.Editor userPrefEditor = userSharedPref.edit();
-
-            userPrefEditor.putString(Constants.USER_NAME, "Davide");
-            userPrefEditor.putString(Constants.USER_SURNAME, "Corradini");
-            userPrefEditor.putString(Constants.USER_CREDIT, bean.getUserCredit());
-            userPrefEditor.putString(Constants.USER_ID, bean.getUserId());
-            userPrefEditor.putString("userEmail", bean.getUserEmail());
-            userPrefEditor.commit();
-
-            updateUserData();
-
-            userIdText.setText(userId);
-            userCreditText.setText(userCredit);
-
-            progressBar.setVisibility(View.INVISIBLE);
         }
     }
 

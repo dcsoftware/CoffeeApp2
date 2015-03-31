@@ -14,8 +14,10 @@
         <init-param>
             <param-name>services</param-name>
             <param-value>it.blqlabs.appengine.coffeeappbackend.MyEndpoint,
-                it.blqlabs.appengine.coffeeappbackend.MessagingEndpoint,
-                it.blqlabs.appengine.coffeeappbackend.RegistrationEndpoint</param-value>
+                it.blqlabs.appengine.coffeeappbackend.Endpoints.MessagingEndpoint,
+                it.blqlabs.appengine.coffeeappbackend.Endpoints.RegistrationEndpoint,
+                it.blqlabs.appengine.coffeeappbackend.Endpoints.UserRecordEndpoint,
+                it.blqlabs.appengine.coffeeappbackend.Records.SecretKeyRecordEndpoint</param-value>
         </init-param>
     </servlet>
     <servlet-mapping>

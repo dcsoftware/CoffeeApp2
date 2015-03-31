@@ -130,8 +130,6 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
 
         }
 
-        Intent intent = new Intent(MainActivity.this, UpdateAlarmReceiver.class);
-        alarmIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
         mSharedPref = getSharedPreferences(Constants.M_SHARED_PREF, MODE_PRIVATE);
 
 
@@ -223,30 +221,6 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
         isFirstRun();
 
         handleIntent(getIntent());
-        //getSecureKey();
-    }
-
-    public void setUpdateAlarm() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 1);
-
-        alarmManager.setInexactRepeating(AlarmManager.RTC, calendar.getTimeInMillis(), AlarmManager.INTERVAL_HOUR, alarmIntent);
-    }
-
-    public void set30SecAlarm() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 1);
-
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 15*1000, alarmIntent);
-
     }
 
     public void getSecureKey() {
@@ -310,7 +284,7 @@ public class MainActivity extends ActionBarActivity implements CardReader.Accoun
                             mPrefEditor.putBoolean(Constants.IS_FIRST_RUN, false);
                             mPrefEditor.commit();
                             Toast.makeText(this, "User registered succesfull", Toast.LENGTH_SHORT).show();
-                            new GcmRegistrationAsyncTask(this).execute();
+                            //new GcmRegistrationAsyncTask(this).execute();
                             updateUserData();
                             //getSecureKey();
                             //set30SecAlarm();

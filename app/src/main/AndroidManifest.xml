@@ -80,20 +80,6 @@
             android:enabled="true"
             android:exported="false" >
         </provider>
-
-        <receiver
-            android:name=".BootReceiver"
-            android:enabled="true"
-            android:exported="true" >
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-        <receiver
-            android:name=".UpdateAlarmReceiver"
-            android:enabled="true"
-            android:exported="true" >
-        </receiver>
         <receiver
             android:name=".GcmBroadcastReceiver"
             android:permission="com.google.android.c2dm.permission.SEND" >

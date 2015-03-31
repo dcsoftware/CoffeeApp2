@@ -20,8 +20,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import it.blqlabs.appengine.coffeeappbackend.Constants;
-import it.blqlabs.appengine.coffeeappbackend.MessagingEndpoint;
-import it.blqlabs.appengine.coffeeappbackend.RegistrationRecord;
+import it.blqlabs.appengine.coffeeappbackend.Records.RegistrationRecord;
+import it.blqlabs.appengine.coffeeappbackend.Records.SecretKeyRecord;
+import it.blqlabs.appengine.coffeeappbackend.Records.UserRecord;
 
 import static it.blqlabs.appengine.coffeeappbackend.OfyService.ofy;
 
@@ -40,15 +41,21 @@ public class KeyGenerator extends HttpServlet{
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
-        DatastoreService datastoreService = DatastoreServiceFactory.getDatastoreService();
-        Transaction txn = datastoreService.beginTransaction();
+        //DatastoreService datastoreService = DatastoreServiceFactory.getDatastoreService();
+        //Transaction txn = datastoreService.beginTransaction();
 
         Calendar c = Calendar.getInstance();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
 
         String generatedKey = generateNewKey();
         sendKeyToClients(generatedKey, dateFormat.format(c.getTime()));
-        try{
+
+        SecretKeyRecord newRecord = new SecretKeyRecord();
+        newRecord.setSecretKey(generatedKey);
+        newRecord.setDate(dateFormat.format(c.getTime()));
+
+        ofy().save().entity(newRecord).now();
+        /*try{
             Entity entity = new Entity(Constants.ENTITY_NAME_KEY);
             entity.setProperty(Constants.PROPERTY_DATE, dateFormat.format(c.getTime()));
             entity.setProperty(Constants.PROPERTY_KEY, generatedKey);
@@ -58,7 +65,7 @@ public class KeyGenerator extends HttpServlet{
             if(txn.isActive()) {
                 txn.rollback();
             }
-        }
+        }*/
     }
 
     private String generateNewKey() {
@@ -76,22 +83,22 @@ public class KeyGenerator extends HttpServlet{
         log.info("Sending key");
         Sender sender = new Sender(API_KEY);
         Message msg = new Message.Builder().addData("key", key).addData("date", date).build();
-        List<RegistrationRecord> records = ofy().load().type(RegistrationRecord.class).limit(10).list();
-        for (RegistrationRecord record : records) {
-            Result result = sender.send(msg, record.getRegId(), 5);
+        List<UserRecord> records = ofy().load().type(UserRecord.class).limit(10).list();
+        for (UserRecord record : records) {
+            Result result = sender.send(msg, record.getGcmId(), 5);
             if (result.getMessageId() != null) {
-                log.info("Message sent to " + record.getRegId());
+                log.info("Message sent to " + record.getGcmId());
                 String canonicalRegId = result.getCanonicalRegistrationId();
                 if (canonicalRegId != null) {
                     // if the regId changed, we have to update the datastore
-                    log.info("Registration Id changed for " + record.getRegId() + " updating to " + canonicalRegId);
-                    record.setRegId(canonicalRegId);
+                    log.info("Registration Id changed for " + record.getGcmId() + " updating to " + canonicalRegId);
+                    record.setGcmId(canonicalRegId);
                     ofy().save().entity(record).now();
                 }
             } else {
                 String error = result.getErrorCodeName();
                 if (error.equals(com.google.android.gcm.server.Constants.ERROR_NOT_REGISTERED)) {
-                    log.warning("Registration Id " + record.getRegId() + " no longer registered with GCM, removing from datastore");
+                    log.warning("Registration Id " + record.getGcmId() + " no longer registered with GCM, removing from datastore");
                     // if the device is no longer registered with Gcm, remove it from the datastore
                     ofy().delete().entity(record).now();
                 } else {

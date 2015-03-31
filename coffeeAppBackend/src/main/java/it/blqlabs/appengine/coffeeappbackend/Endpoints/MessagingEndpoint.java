@@ -4,7 +4,7 @@
    https://github.com/GoogleCloudPlatform/gradle-appengine-templates/tree/master/GcmEndpoints
 */
 
-package it.blqlabs.appengine.coffeeappbackend;
+package it.blqlabs.appengine.coffeeappbackend.Endpoints;
 
 import com.google.android.gcm.server.Constants;
 import com.google.android.gcm.server.Message;
@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import javax.inject.Named;
+
+import it.blqlabs.appengine.coffeeappbackend.Records.RegistrationRecord;
 
 import static it.blqlabs.appengine.coffeeappbackend.OfyService.ofy;
 
